@@ -2,11 +2,12 @@ package control
 
 import (
 	"bytes"
-	"deb-builder/pkg/config"
 	"math"
 	"os"
 	"strings"
 	"text/template"
+
+	"deb-builder/pkg/config"
 )
 
 const descriptionMaxLen = 70

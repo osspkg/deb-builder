@@ -1,11 +1,12 @@
 package exec
 
 import (
-	"deb-builder/pkg/config"
-	"deb-builder/pkg/utils"
 	"fmt"
 	"os"
 	"os/exec"
+
+	"deb-builder/pkg/config"
+	"deb-builder/pkg/utils"
 
 	"github.com/deweppro/go-app/console"
 )

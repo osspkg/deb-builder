@@ -4,12 +4,13 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"crypto/md5"
-	"deb-builder/pkg/utils"
 	"encoding/hex"
 	"io"
 	"os"
 	"strings"
 	"time"
+
+	"deb-builder/pkg/utils"
 )
 
 type TarGZ struct {

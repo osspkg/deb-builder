@@ -1,9 +1,10 @@
 package config
 
 import (
-	"deb-builder/pkg/utils"
 	"os"
 	"path/filepath"
+
+	"deb-builder/pkg/utils"
 
 	"gopkg.in/yaml.v2"
 )
@@ -57,15 +58,15 @@ func Create() error {
 		return err
 	}
 	conf := &Config{
-		Package:      filepath.Base(dir),
+		Package:      filepath.Base(dir) + "-app",
 		Source:       filepath.Base(dir),
 		Version:      "0.0.1",
 		Architecture: []string{"i386", "amd64"},
-		Maintainer:   utils.GetEnv("DEB_MAINTAINER", "user <user@email>"),
-		Homepage:     "https://site.path/",
+		Maintainer:   utils.GetEnv("DEB_MAINTAINER", "User Name <user.name@example.com>"),
+		Homepage:     "http://example.com/",
 		Section:      `utils`,
 		Priority:     `optional`,
-		Description:  []string{"Title", "Info text 1", "Info text 2"},
+		Description:  []string{"This is a demo utility", "It performs some actions. Don't forget to update this text."},
 		Control: Control{
 			Depends:     []string{"systemd | supervisor", "ca-certificates"},
 			Conffiles:   []string{"/etc/" + filepath.Base(dir) + "/config.yaml"},
