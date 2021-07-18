@@ -1,0 +1,51 @@
+run:
+  concurrency: 1
+  deadline: 2m
+  issues-exit-code: 1
+  tests: true
+  skip-files:
+    - easyjson
+
+issues:
+  exclude-use-default: false
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0.8
+  gofmt:
+    simplify: true
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  gocyclo:
+    min-complexity: 30
+  misspell:
+    locale: US
+  gosimple:
+    go: "1.16"
+    checks: ["all"]
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - gofmt
+    - errcheck
+    - misspell
+    - gocyclo
+    - ineffassign
+    - goimports
+    - gosimple
+    - prealloc
+  fast: false
