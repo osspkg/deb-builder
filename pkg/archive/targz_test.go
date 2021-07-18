@@ -18,12 +18,12 @@ func TestTarGZ(t *testing.T) {
 
 	f, h, err := trgz.WriteData("hello.txt", []byte("bbbbb"))
 	require.NoError(t, err)
-	require.Equal(t, "a21075a36eeddd084e17611a238c7101", h)
+	require.Equal(t, "6262626262d41d8cd98f00b204e9800998ecf8427e", h)
 	require.Equal(t, "hello.txt", f)
 
 	f, h, err = trgz.WriteFile("/tmp/test.txt", "var/log/test.log")
 	require.NoError(t, err)
-	require.Equal(t, "d41d8cd98f00b204e9800998ecf8427e", h)
+	require.Equal(t, "594f803b380a41396ed63dca39503542", h)
 	require.Equal(t, "var/log/test.log", f)
 
 	err = trgz.Close()
