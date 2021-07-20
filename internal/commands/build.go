@@ -19,11 +19,10 @@ func Build() console.CommandGetter {
 		setter.Setup("build", "build deb package")
 		setter.Example("build")
 		setter.Flag(func(fs console.FlagsSetter) {
-			fs.StringVar("gpg", utils.GetEnv("DEB_SIGN_KEYID", ""), "deb gpg sign keyID")
 			fs.StringVar("base-dir", utils.GetEnv("DEB_STORAGE_BASE_DIR", "/tmp/deb-storage"), "deb package base storage")
 			fs.StringVar("tmp-dir", utils.GetEnv("DEB_BUILD_DIR", "/tmp/deb-build"), "deb package build dir")
 		})
-		setter.ExecFunc(func(_ []string, gpg, baseDir, tmpDir string) {
+		setter.ExecFunc(func(_ []string, baseDir, tmpDir string) {
 			conf, err := config.Detect()
 			console.FatalIfErr(err, "deb config not found")
 
