@@ -10,5 +10,12 @@ func main() {
 	root := console.New("deb-builder", "help deb-builder")
 	root.AddCommand(commands.CreateConfig())
 	root.AddCommand(commands.Build())
+
+	pgpCmd := console.NewCommand(func(setter console.CommandSetter) {
+		setter.Setup("pgp", "work with PGP")
+		setter.AddCommand(commands.CreatePGPCert())
+	})
+
+	root.AddCommand(pgpCmd)
 	root.Exec()
 }
