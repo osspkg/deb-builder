@@ -56,9 +56,10 @@ func (v *Other) WriteTo(dir string) error {
 
 	for _, file := range files {
 		if utils.FileExist(file.Src) {
-			if err := utils.CopyFile(file.Src, file.Dst); err != nil {
+			if err := utils.CopyFile(file.Dst, file.Src); err != nil {
 				return err
 			}
+			v.files = append(v.files, file.Dst)
 		}
 	}
 

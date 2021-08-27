@@ -37,8 +37,8 @@ func FileExist(filename string) bool {
 	return err == nil
 }
 
-func CopyFile(src, dst string) error {
-	source, err := os.OpenFile(dst, os.O_RDONLY|os.O_CREATE|os.O_TRUNC, 0)
+func CopyFile(dst, src string) error {
+	source, err := os.OpenFile(src, os.O_RDONLY, 0)
 	if err != nil {
 		return err
 	}
