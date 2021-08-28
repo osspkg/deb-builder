@@ -9,7 +9,7 @@
 # install
 
 ```go
- go install github.com/dewep-online/deb-builder/cmd/deb-builder
+ go install github.com/dewep-online/deb-builder/cmd/deb-builder@latest
 ```
 
 # create config file `.deb.yaml`
