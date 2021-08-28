@@ -5,12 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"deb-builder/pkg/archive"
-	"deb-builder/pkg/config"
-	"deb-builder/pkg/control"
-	"deb-builder/pkg/exec"
-	"deb-builder/pkg/utils"
-
+	"github.com/dewep-online/deb-builder/pkg/archive"
+	"github.com/dewep-online/deb-builder/pkg/config"
+	"github.com/dewep-online/deb-builder/pkg/control"
+	"github.com/dewep-online/deb-builder/pkg/exec"
+	"github.com/dewep-online/deb-builder/pkg/utils"
 	"github.com/deweppro/go-app/console"
 )
 

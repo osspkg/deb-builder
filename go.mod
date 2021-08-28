@@ -1,4 +1,4 @@
-module deb-builder
+module github.com/dewep-online/deb-builder
 
 go 1.16
 

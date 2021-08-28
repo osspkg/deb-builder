@@ -4,8 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"deb-builder/pkg/archive"
-
+	"github.com/dewep-online/deb-builder/pkg/archive"
 	"github.com/stretchr/testify/require"
 )
 

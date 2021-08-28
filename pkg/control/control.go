@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"deb-builder/pkg/config"
+	"github.com/dewep-online/deb-builder/pkg/config"
 )
 
 const descriptionMaxLen = 70

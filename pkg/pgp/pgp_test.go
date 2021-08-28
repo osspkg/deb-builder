@@ -5,8 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"deb-builder/pkg/pgp"
-
+	"github.com/dewep-online/deb-builder/pkg/pgp"
 	"github.com/stretchr/testify/require"
 )
 

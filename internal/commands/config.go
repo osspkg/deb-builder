@@ -1,8 +1,7 @@
 package commands
 
 import (
-	"deb-builder/pkg/config"
-
+	"github.com/dewep-online/deb-builder/pkg/config"
 	"github.com/deweppro/go-app/console"
 )
 

@@ -4,8 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"deb-builder/pkg/utils"
-
+	"github.com/dewep-online/deb-builder/pkg/utils"
 	"gopkg.in/yaml.v2"
 )
 

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"deb-builder/pkg/utils"
+	"github.com/dewep-online/deb-builder/pkg/utils"
 )
 
 type TarGZ struct {

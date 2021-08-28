@@ -1,6 +1,6 @@
 package control
 
-import "deb-builder/pkg/config"
+import "github.com/dewep-online/deb-builder/pkg/config"
 
 type ControlPkg struct {
 	conf  *config.Config

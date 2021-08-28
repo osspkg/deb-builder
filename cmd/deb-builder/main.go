@@ -1,7 +1,7 @@
 package main
 
 import (
-	"deb-builder/internal/commands"
+	"github.com/dewep-online/deb-builder/internal/commands"
 
 	"github.com/deweppro/go-app/console"
 )

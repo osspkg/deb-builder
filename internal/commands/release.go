@@ -3,8 +3,7 @@ package commands
 import (
 	"os"
 
-	"deb-builder/pkg/pgp"
-
+	"github.com/dewep-online/deb-builder/pkg/pgp"
 	"github.com/deweppro/go-app/console"
 )
 

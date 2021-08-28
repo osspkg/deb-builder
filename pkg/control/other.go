@@ -5,8 +5,8 @@ import (
 	"os"
 	"sort"
 
-	"deb-builder/pkg/config"
-	"deb-builder/pkg/utils"
+	"github.com/dewep-online/deb-builder/pkg/config"
+	"github.com/dewep-online/deb-builder/pkg/utils"
 )
 
 type (
