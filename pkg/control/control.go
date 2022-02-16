@@ -49,13 +49,13 @@ func (v *Control) Arch(arch string) {
 	v.arch = arch
 }
 
-func (v *Control) Save(dir string) (string, error) {
+func (v *Control) Save(dir string, subver string) (string, error) {
 	buf := &bytes.Buffer{}
 	controlFile := dir + "/control"
 	model := modelControl{
 		Package:      v.conf.Package,
 		Source:       v.conf.Source,
-		Version:      v.conf.Version,
+		Version:      v.conf.Version + subver,
 		Architecture: v.arch,
 		Maintainer:   v.conf.Maintainer,
 		Size:         v.size,
@@ -77,7 +77,7 @@ func (v *Control) Save(dir string) (string, error) {
 					cur += i
 
 					if cur >= descriptionMaxLen {
-						buf.WriteString("\n ")
+						buf.WriteString("\n")
 						cur = 0
 					}
 				}

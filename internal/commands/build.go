@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/dewep-online/deb-builder/pkg/archive"
 	"github.com/dewep-online/deb-builder/pkg/config"
@@ -18,10 +19,11 @@ func Build() console.CommandGetter {
 		setter.Setup("build", "build deb package")
 		setter.Example("build")
 		setter.Flag(func(fs console.FlagsSetter) {
-			fs.StringVar("base-dir", utils.GetEnv("DEB_STORAGE_BASE_DIR", "/tmp/deb-storage"), "deb package base storage")
-			fs.StringVar("tmp-dir", utils.GetEnv("DEB_BUILD_DIR", "/tmp/deb-build"), "deb package build dir")
+			fs.StringVar("base-dir", utils.GetEnv("DEB_STORAGE_BASE_DIR", "/tmp/deb-storage"), "Deb package base storage")
+			fs.StringVar("tmp-dir", utils.GetEnv("DEB_BUILD_DIR", "/tmp/deb-build"), "Deb package build dir")
+			fs.StringVar("subver", "", "Set date for calc subversion time. Format: 2022-01-01")
 		})
-		setter.ExecFunc(func(_ []string, baseDir, tmpDir string) {
+		setter.ExecFunc(func(_ []string, baseDir, tmpDir string, subver string) {
 			conf, err := config.Detect()
 			console.FatalIfErr(err, "deb config not found")
 
@@ -31,6 +33,13 @@ func Build() console.CommandGetter {
 
 			storeDir := fmt.Sprintf("%s/%s/%s", baseDir, conf.Package[0:1], conf.Package)
 			console.FatalIfErr(os.MkdirAll(storeDir, 0755), "creating storage directory")
+
+			subVersion := ""
+			if len(subver) > 0 {
+				pt, err := time.Parse("2006-01-02", subver)
+				console.FatalIfErr(err, "parse date for calc subversion")
+				subVersion = fmt.Sprintf("-%d", time.Now().Unix()-pt.Unix())
+			}
 
 			exec.Build(conf, func(arch string) {
 
@@ -61,7 +70,7 @@ func Build() console.CommandGetter {
 				ctrl := control.NewControl(conf)
 				ctrl.DataSize(tg.Size())
 				ctrl.Arch(arch)
-				ctrlFile, err := ctrl.Save(buildDir)
+				ctrlFile, err := ctrl.Save(buildDir, subVersion)
 				console.FatalIfErr(err, "create control")
 				cpkg.AddFile(ctrlFile)
 
@@ -85,7 +94,7 @@ func Build() console.CommandGetter {
 
 				// build deb
 
-				debFile := fmt.Sprintf("%s/%s_%s_%s.deb", storeDir, conf.Package, conf.Version, arch)
+				debFile := fmt.Sprintf("%s/%s_%s%s_%s.deb", storeDir, conf.Package, conf.Version, subVersion, arch)
 				console.FatalIfErr(os.RemoveAll(debFile), "remove old deb file")
 				deb, err := archive.NewDeb(debFile)
 				console.FatalIfErr(err, "create %s", debFile)
