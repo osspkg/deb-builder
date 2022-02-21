@@ -41,7 +41,7 @@ linters:
   enable:
     - govet
     - gofmt
-    - errcheck
+#    - errcheck
     - misspell
     - gocyclo
     - ineffassign

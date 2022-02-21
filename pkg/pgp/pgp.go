@@ -1,6 +1,7 @@
 package pgp
 
 import (
+	"bytes"
 	"crypto"
 	"io"
 
@@ -69,4 +70,27 @@ func (v *PGP) Sign(in io.Reader, out io.Writer) error {
 	// 	return err
 	// }
 	return nil
+}
+
+func (v *PGP) GetPublic() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	if err := v.key.Serialize(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (v *PGP) GetPublicBase64() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	enc, err := armor.Encode(buf, openpgp.PublicKeyType, map[string]string{})
+	if err != nil {
+		return nil, err
+	}
+	if err = v.key.Serialize(enc); err != nil {
+		return nil, err
+	}
+	if err = enc.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

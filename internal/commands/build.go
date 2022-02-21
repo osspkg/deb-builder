@@ -12,6 +12,7 @@ import (
 	"github.com/dewep-online/deb-builder/pkg/exec"
 	"github.com/dewep-online/deb-builder/pkg/utils"
 	"github.com/deweppro/go-app/console"
+	"github.com/deweppro/go-archives/ar"
 )
 
 func Build() console.CommandGetter {
@@ -51,7 +52,7 @@ func Build() console.CommandGetter {
 
 				md5sum := control.NewMd5Sums()
 				dataFile := buildDir + "/data.tar.gz"
-				tg, err := archive.NewTarGZ(dataFile)
+				tg, err := archive.NewWriter(dataFile)
 				console.FatalIfErr(err, "create data.tar.gz")
 				for src, dst := range conf.Data {
 					if f, h, err1 := tg.WriteFile(src, dst); err1 != nil {
@@ -83,7 +84,7 @@ func Build() console.CommandGetter {
 				// control.tar.gz
 
 				controlFile := buildDir + "/control.tar.gz"
-				tg, err = archive.NewTarGZ(controlFile)
+				tg, err = archive.NewWriter(controlFile)
 				console.FatalIfErr(err, "create control.tar.gz")
 				for _, file := range cpkg.List() {
 					if _, _, err1 := tg.WriteFile(file, filepath.Base(file)); err1 != nil {
@@ -96,10 +97,11 @@ func Build() console.CommandGetter {
 
 				debFile := fmt.Sprintf("%s/%s_%s%s_%s.deb", storeDir, conf.Package, conf.Version, subVersion, arch)
 				console.FatalIfErr(os.RemoveAll(debFile), "remove old deb file")
-				deb, err := archive.NewDeb(debFile)
+				deb, err := ar.Open(debFile, 0644)
 				console.FatalIfErr(err, "create %s", debFile)
-				console.FatalIfErr(deb.WriteFile(controlFile), "write %s to %s", controlFile, debFile)
-				console.FatalIfErr(deb.WriteFile(dataFile), "write %s to %s", dataFile, debFile)
+				console.FatalIfErr(deb.Write("debian-binary", []byte("2.0\n"), 0644), "write debian-binary to %s", debFile)
+				console.FatalIfErr(deb.Import(controlFile, 0644), "write %s to %s", controlFile, debFile)
+				console.FatalIfErr(deb.Import(dataFile, 0644), "write %s to %s", dataFile, debFile)
 				console.FatalIfErr(deb.Close(), "close file %s", debFile)
 
 			})

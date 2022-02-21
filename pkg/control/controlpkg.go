@@ -2,22 +2,22 @@ package control
 
 import "github.com/dewep-online/deb-builder/pkg/config"
 
-type ControlPkg struct {
+type Pkg struct {
 	conf  *config.Config
 	files []string
 }
 
-func NewControlPkg(conf *config.Config) *ControlPkg {
-	return &ControlPkg{
+func NewControlPkg(conf *config.Config) *Pkg {
+	return &Pkg{
 		conf:  conf,
 		files: make([]string, 0),
 	}
 }
 
-func (v *ControlPkg) AddFile(filepath ...string) {
+func (v *Pkg) AddFile(filepath ...string) {
 	v.files = append(v.files, filepath...)
 }
 
-func (v *ControlPkg) List() []string {
+func (v *Pkg) List() []string {
 	return v.files
 }

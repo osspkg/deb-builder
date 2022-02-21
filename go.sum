@@ -5,6 +5,8 @@ github.com/deweppro/go-algorithms v1.1.1 h1:FOzPuYmFuFGN6Nmcos5zC1WfD3Ya8XxUJ6Oi
 github.com/deweppro/go-algorithms v1.1.1/go.mod h1:h50x8PTIGbiIhOh5vH/10J39vTzi2UmG7TVLupellqY=
 github.com/deweppro/go-app v1.4.2 h1:mpYjwyC2b6089CdRhJuJPMeiETu4ldaCXE9fSMQwarQ=
 github.com/deweppro/go-app v1.4.2/go.mod h1:Tm4RUCOw7R/qnomzYT/rIykfqRI1zNfDArpHsaLgl/I=
+github.com/deweppro/go-archives v1.0.2 h1:0kHfvhr3tD9r8QqVDSZttFPq0chaAwaXnK0atXeD5SY=
+github.com/deweppro/go-archives v1.0.2/go.mod h1:GP2Or5TFSEWQAam/Q/jgFhLpcF0LroITKic654pQERk=
 github.com/deweppro/go-chan-pool v1.1.1 h1:TCoQhgXG6GP7zTJiKwOmqSeaR64651cWFpVniD5BIys=
 github.com/deweppro/go-chan-pool v1.1.1/go.mod h1:lEtDI+rhCE/ES1i9q0FOtYgjMftw5PCCepit4a+9Uds=
 github.com/deweppro/go-logger v1.2.3 h1:icOV4UwBGc8s9S8zcNIcDjBK00qQtcuBZzBgRmMaq24=
@@ -37,5 +39,6 @@ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
 gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
-gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b h1:h8qDotaEPuJATrMmW04NCwg7v22aHH28wwpauUhK9Oo=
+gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
