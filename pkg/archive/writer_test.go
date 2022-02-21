@@ -9,7 +9,7 @@ import (
 )
 
 func TestTarGZ(t *testing.T) {
-	trgz, err := archive.NewTarGZ("/tmp/test.tar.gz")
+	trgz, err := archive.NewWriter("/tmp/test.tar.gz")
 	require.NoError(t, err)
 
 	err = os.WriteFile("/tmp/test.txt", []byte("aaaaa"), 0755)

@@ -53,5 +53,37 @@ data: # A list of files that will be packaged in a package during assembly, wher
 # build deb package
 
 ```bash
-deb-builder build --base-dir=/path/to/deb/release/directory --tmp-dir=/path/to/build/directory
+deb-builder build --base-dir=/path_to_deb_release_directory/pool/main --tmp-dir=/path/to/build/directory
+```
+
+# build release repos
+
+```bash
+deb-builder build --release-dir=/path_to_deb_release_directory --private-key=/path_to_pgp_key/private.pgp --origin='Company Name' --label='Company Info'
+```
+
+### Add to apt [amd64]
+
+```bash
+$ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
+$ sudo tee /etc/apt/sources.list.d/yourdomain.list <<'EOF'
+deb [arch=amd64] https://yourdomain/ stable main
+EOF
+$ sudo apt-get update
+```
+
+### Add to apt [arm64]
+
+```bash
+$ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
+$ sudo tee /etc/apt/sources.list.d/yourdomain.list <<'EOF'
+deb [arch=arm64] https://yourdomain/ stable main
+EOF
+$ sudo apt-get update
+```
+
+# build pgp key
+
+```bash
+deb-builder pgp new --name='Company Name' --email='email@company' --comment='Comment about key' --path=/path_to_pgp_key
 ```
