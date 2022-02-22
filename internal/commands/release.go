@@ -212,15 +212,15 @@ func GenerateRelease() console.CommandGetter {
 			}
 
 			inReleaseInfo, err := inReleaseModel.Encode()
-			console.FatalIfErr(err, "encode InRelease")
-			err = os.WriteFile(path+PathDistStable+"InRelease", inReleaseInfo, 0755)
-			console.FatalIfErr(err, "write inRelease")
+			console.FatalIfErr(err, "encode Release")
+			err = os.WriteFile(path+PathDistStable+"Release", inReleaseInfo, 0755)
+			console.FatalIfErr(err, "write Release")
 
 			in := bytes.NewBuffer(inReleaseInfo)
 			out := &bytes.Buffer{}
-			console.FatalIfErr(pgpStore.Sign(in, out), "sign inRelease")
-			err = os.WriteFile(path+PathDistStable+"Release", out.Bytes(), 0755)
-			console.FatalIfErr(err, "write inRelease")
+			console.FatalIfErr(pgpStore.Sign(in, out), "sign Release")
+			err = os.WriteFile(path+PathDistStable+"InRelease", out.Bytes(), 0755)
+			console.FatalIfErr(err, "write InRelease")
 
 			/**
 			Copy Release.gpg
