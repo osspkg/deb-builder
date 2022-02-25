@@ -15,5 +15,4 @@ vendorgo test -c`
 *.test
 *.out
 vendor/
-.deb.yaml
 build/bin

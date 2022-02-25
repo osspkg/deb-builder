@@ -1,0 +1,24 @@
+package: deb-builder
+source: deb-builder
+version: 0.0.1
+architecture:
+  - amd64
+maintainer: DewepOnline <deb@dewep.online>
+homepage: https://dewep.online/deb-builder.html
+description:
+  - Debian package builder
+section: web
+priority: optional
+control:
+  depends:
+    - systemd
+    - ca-certificates
+  build: scripts/build.sh %s
+  conffiles:
+    - /etc/fdns/config.yaml
+  preinst: scripts/preinst.sh
+  postinst: scripts/postinst.sh
+  prerm: scripts/prerm.sh
+  postrm: scripts/postrm.sh
+data:
+  build/bin/deb-builder_amd64: usr/bin/deb-builder
