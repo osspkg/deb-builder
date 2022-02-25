@@ -37,6 +37,12 @@ func FileExist(filename string) bool {
 	return err == nil
 }
 
+func FileStat(filename string, callFunc func(fi os.FileInfo)) {
+	if info, err := os.Stat(filename); err == nil {
+		callFunc(info)
+	}
+}
+
 func CopyFile(dst, src string) error {
 	source, err := os.OpenFile(src, os.O_RDONLY, 0)
 	if err != nil {
