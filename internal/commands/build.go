@@ -22,9 +22,8 @@ func Build() console.CommandGetter {
 		setter.Flag(func(fs console.FlagsSetter) {
 			fs.StringVar("base-dir", utils.GetEnv("DEB_STORAGE_BASE_DIR", "/tmp/deb-storage"), "Deb package base storage")
 			fs.StringVar("tmp-dir", utils.GetEnv("DEB_BUILD_DIR", "/tmp/deb-build"), "Deb package build dir")
-			fs.StringVar("subver", "", "Set date for calc subversion time. Format: 2022-01-01")
 		})
-		setter.ExecFunc(func(_ []string, baseDir, tmpDir string, subver string) {
+		setter.ExecFunc(func(_ []string, baseDir, tmpDir string) {
 			conf, err := config.Detect()
 			console.FatalIfErr(err, "deb config not found")
 
@@ -35,14 +34,26 @@ func Build() console.CommandGetter {
 			storeDir := fmt.Sprintf("%s/%s/%s", baseDir, conf.Package[0:1], conf.Package)
 			console.FatalIfErr(os.MkdirAll(storeDir, 0755), "creating storage directory")
 
-			subVersion := ""
-			if len(subver) > 0 {
-				pt, err := time.Parse("2006-01-02", subver)
-				console.FatalIfErr(err, "parse date for calc subversion")
-				subVersion = fmt.Sprintf("-%d", time.Now().Unix()-pt.Unix())
-			}
-
 			exec.Build(conf, func(arch string) {
+
+				// check file version
+
+				subVersion := ""
+				debFileNameBuild := func() string {
+					return fmt.Sprintf("%s/%s_%s%s_%s.deb", storeDir, conf.Package, conf.Version, subVersion, arch)
+				}
+				debFile := debFileNameBuild()
+				for {
+					utils.FileStat(debFile, func(fi os.FileInfo) {
+						subVersion = fmt.Sprintf("-%d", time.Now().Unix()-fi.ModTime().Unix())
+						debFile = debFileNameBuild()
+					})
+
+					if !utils.FileExist(debFile) {
+						break
+					}
+					<-time.After(time.Second)
+				}
 
 				// package
 
@@ -95,8 +106,6 @@ func Build() console.CommandGetter {
 
 				// build deb
 
-				debFile := fmt.Sprintf("%s/%s_%s%s_%s.deb", storeDir, conf.Package, conf.Version, subVersion, arch)
-				console.FatalIfErr(os.RemoveAll(debFile), "remove old deb file")
 				deb, err := ar.Open(debFile, 0644)
 				console.FatalIfErr(err, "create %s", debFile)
 				console.FatalIfErr(deb.Write("debian-binary", []byte("2.0\n"), 0644), "write debian-binary to %s", debFile)
