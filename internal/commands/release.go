@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dewep-online/deb-builder/pkg/archive"
+	"github.com/dewep-online/deb-builder/pkg/buffer"
 	"github.com/dewep-online/deb-builder/pkg/hash"
 	"github.com/dewep-online/deb-builder/pkg/packages"
 	"github.com/dewep-online/deb-builder/pkg/utils"
@@ -21,12 +22,13 @@ import (
 )
 
 const (
-	PathMainPool     = "/pool/main/"
-	PathDistStable   = "/dists/stable/"
-	PathDistMain     = "/dists/stable/main/"
-	PathDistBinAmd64 = "/dists/stable/main/binary-amd64/"
-	PathDistBinArm64 = "/dists/stable/main/binary-arm64/"
+	PathMainPool   = "/pool/main/"
+	PathDistStable = "/dists/stable/"
+	PathDistMain   = "/dists/stable/main/"
+	PathDistBin    = "/dists/stable/main/binary-%s/"
 )
+
+var archs = []string{"i386", "amd64", "arm", "arm64"}
 
 func GenerateRelease() console.CommandGetter {
 	return console.NewCommand(func(setter console.CommandSetter) {
@@ -56,8 +58,8 @@ func GenerateRelease() console.CommandGetter {
 			Validate dirs
 			*/
 
-			dirs := []string{PathMainPool, PathDistStable, PathDistMain, PathDistBinAmd64, PathDistBinArm64}
-			for _, dir := range dirs {
+			for _, arch := range archs {
+				dir := fmt.Sprintf(PathDistBin, arch)
 				console.FatalIfErr(os.MkdirAll(path+dir, 0755), "validate dirs")
 			}
 
@@ -126,39 +128,40 @@ func GenerateRelease() console.CommandGetter {
 			Release
 			*/
 
-			amd64pkg := &bytes.Buffer{}
-			arm64pkg := &bytes.Buffer{}
+			pkgBuffer := make(map[string]*buffer.Buffer)
+			for _, v := range archs {
+				pkgBuffer[v] = buffer.New(v)
+			}
 
 			for _, pkg := range pkgs {
 				pkgInfo, err0 := pkg.Encode()
 				console.FatalIfErr(err0, "encode package")
 				pkgInfo = append(pkgInfo, []byte("\n\n")...)
 
-				switch pkg.Architecture {
-				case "amd64":
-					_, err = amd64pkg.Write(pkgInfo)
-					console.FatalIfErr(err, "write amd64 package")
-				case "arm64":
-					_, err = arm64pkg.Write(pkgInfo)
-					console.FatalIfErr(err, "write arm64 package")
-				case "all":
-					_, err = arm64pkg.Write(pkgInfo)
-					console.FatalIfErr(err, "write arm64 package")
-					_, err = amd64pkg.Write(pkgInfo)
-					console.FatalIfErr(err, "write amd64 package")
+				if pkg.Architecture == "all" {
+					for _, arch := range archs {
+						pkgBuffer[arch].Write(pkgInfo)
+					}
+				} else {
+					if pb, ok := pkgBuffer[pkg.Architecture]; ok {
+						pb.Write(pkgInfo)
+					}
 				}
 			}
 
-			err = os.WriteFile(path+PathDistBinAmd64+"Packages", amd64pkg.Bytes(), 0755)
-			console.FatalIfErr(err, "write amd64 Packages")
-			err = archive.GZWriteFile(path+PathDistBinAmd64+"Packages.gz", amd64pkg.Bytes(), 0755)
-			console.FatalIfErr(err, "write amd64 Packages.gz")
-			err = os.WriteFile(path+PathDistBinArm64+"Packages", arm64pkg.Bytes(), 0755)
-			console.FatalIfErr(err, "write arm64 Packages")
-			err = archive.GZWriteFile(path+PathDistBinArm64+"Packages.gz", arm64pkg.Bytes(), 0755)
-			console.FatalIfErr(err, "write arm64 Packages.gz")
+			inRelease := []string{}
+			for _, arch := range archs {
+				dir := fmt.Sprintf(PathDistBin, arch)
+				inRelease = append(inRelease, path+dir+"Packages", path+dir+"Packages.gz")
 
-			for osArch, osArchPath := range map[string]string{"amd64": PathDistBinAmd64, "arm64": PathDistBinArm64} {
+				err = os.WriteFile(path+dir+"Packages", pkgBuffer[arch].Bytes(), 0755)
+				console.FatalIfErr(err, "write amd64 Packages")
+				err = archive.GZWriteFile(path+dir+"Packages.gz", pkgBuffer[arch].Bytes(), 0755)
+				console.FatalIfErr(err, "write amd64 Packages.gz")
+			}
+
+			for _, osArch := range archs {
+				osArchPath := fmt.Sprintf(PathDistBin, osArch)
 				releasePkg := packages.ReleaseModel{
 					Component:    "main",
 					Origin:       origin,
@@ -177,22 +180,13 @@ func GenerateRelease() console.CommandGetter {
 			InRelease
 			*/
 
-			inRelease := []string{
-				path + PathDistBinAmd64 + "Packages",
-				path + PathDistBinAmd64 + "Packages.gz",
-				path + PathDistBinAmd64 + "Release",
-				path + PathDistBinArm64 + "Packages",
-				path + PathDistBinArm64 + "Packages.gz",
-				path + PathDistBinArm64 + "Release",
-			}
-
 			inReleaseModel := &packages.InReleaseModel{
 				Origin:        origin,
 				Label:         label,
 				Component:     "main",
 				Codename:      "stable",
 				Date:          time.Now().UTC().Format(time.RFC1123),
-				Architectures: "amd64 arm64",
+				Architectures: "i386 amd64 arm arm64",
 				Description:   "Packages for Ubuntu and Debian",
 				MD5Sum:        "",
 				SHA1:          "",
@@ -242,14 +236,6 @@ func GenerateRelease() console.CommandGetter {
 $ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
 $ sudo tee /etc/apt/sources.list.d/yourdomain.list <<'EOF'
 deb [arch=amd64] https://yourdomain/ stable main
-EOF
-$ sudo apt-get update
-
-=========================== arm64 ===========================
-
-$ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
-$ sudo tee /etc/apt/sources.list.d/yourdomain.list <<'EOF'
-deb [arch=arm64] https://yourdomain/ stable main
 EOF
 $ sudo apt-get update
 

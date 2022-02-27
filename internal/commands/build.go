@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
+	"strings"
 
 	"github.com/dewep-online/deb-builder/pkg/archive"
 	"github.com/dewep-online/deb-builder/pkg/config"
 	"github.com/dewep-online/deb-builder/pkg/control"
 	"github.com/dewep-online/deb-builder/pkg/exec"
+	"github.com/dewep-online/deb-builder/pkg/packages"
 	"github.com/dewep-online/deb-builder/pkg/utils"
 	"github.com/deweppro/go-app/console"
 	"github.com/deweppro/go-archives/ar"
@@ -20,11 +21,12 @@ func Build() console.CommandGetter {
 		setter.Setup("build", "build deb package")
 		setter.Example("build")
 		setter.Flag(func(fs console.FlagsSetter) {
+			fs.StringVar("config", config.ConfigFileName, "Config file")
 			fs.StringVar("base-dir", utils.GetEnv("DEB_STORAGE_BASE_DIR", "/tmp/deb-storage"), "Deb package base storage")
 			fs.StringVar("tmp-dir", utils.GetEnv("DEB_BUILD_DIR", "/tmp/deb-build"), "Deb package build dir")
 		})
-		setter.ExecFunc(func(_ []string, baseDir, tmpDir string) {
-			conf, err := config.Detect()
+		setter.ExecFunc(func(_ []string, debConf, baseDir, tmpDir string) {
+			conf, err := config.Detect(debConf)
 			console.FatalIfErr(err, "deb config not found")
 
 			buildDir := fmt.Sprintf("%s/%s_%s", tmpDir, conf.Package, conf.Version)
@@ -38,22 +40,7 @@ func Build() console.CommandGetter {
 
 				// check file version
 
-				subVersion := ""
-				debFileNameBuild := func() string {
-					return fmt.Sprintf("%s/%s_%s%s_%s.deb", storeDir, conf.Package, conf.Version, subVersion, arch)
-				}
-				debFile := debFileNameBuild()
-				for {
-					utils.FileStat(debFile, func(fi os.FileInfo) {
-						subVersion = fmt.Sprintf("-%d", time.Now().Unix()-fi.ModTime().Unix())
-						debFile = debFileNameBuild()
-					})
-
-					if !utils.FileExist(debFile) {
-						break
-					}
-					<-time.After(time.Second)
-				}
+				debFile, revision, carch := packages.BuildName(storeDir, conf.Package, conf.Version, arch)
 
 				// package
 
@@ -65,8 +52,18 @@ func Build() console.CommandGetter {
 				dataFile := buildDir + "/data.tar.gz"
 				tg, err := archive.NewWriter(dataFile)
 				console.FatalIfErr(err, "create data.tar.gz")
-				for src, dst := range conf.Data {
-					if f, h, err1 := tg.WriteFile(src, dst); err1 != nil {
+				for dst, src := range conf.Data {
+					src = strings.ReplaceAll(src, "%arch%", arch)
+					var (
+						f, h string
+						err1 error
+					)
+					if src[0] == '+' {
+						f, h, err1 = tg.WriteData(dst, []byte(src)[1:])
+					} else {
+						f, h, err1 = tg.WriteFile(src, dst)
+					}
+					if err1 != nil {
 						console.FatalIfErr(err1, "write %s to data.tar.gz", src)
 					} else {
 						md5sum.Add(f, h)
@@ -81,8 +78,8 @@ func Build() console.CommandGetter {
 
 				ctrl := control.NewControl(conf)
 				ctrl.DataSize(tg.Size())
-				ctrl.Arch(arch)
-				ctrlFile, err := ctrl.Save(buildDir, subVersion)
+				ctrl.Arch(carch)
+				ctrlFile, err := ctrl.Save(buildDir, revision)
 				console.FatalIfErr(err, "create control")
 				cpkg.AddFile(ctrlFile)
 
@@ -113,6 +110,7 @@ func Build() console.CommandGetter {
 				console.FatalIfErr(deb.Import(dataFile, 0644), "write %s to %s", dataFile, debFile)
 				console.FatalIfErr(deb.Close(), "close file %s", debFile)
 
+				console.Infof("Result: %s", debFile)
 			})
 
 		})
