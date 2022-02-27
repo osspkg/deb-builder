@@ -1,8 +1,11 @@
 package: deb-builder
 source: deb-builder
-version: 0.0.1
+version: '1:0.1.0'
 architecture:
+  - 386
   - amd64
+  - arm
+  - arm64
 maintainer: DewepOnline <deb@dewep.online>
 homepage: https://dewep.online/deb-builder.html
 description:
@@ -13,7 +16,7 @@ control:
   depends:
     - systemd
     - ca-certificates
-  build: scripts/build.sh %s
+  build: scripts/build.sh
   conffiles:
     - /etc/fdns/config.yaml
   preinst: scripts/preinst.sh
@@ -21,4 +24,5 @@ control:
   prerm: scripts/prerm.sh
   postrm: scripts/postrm.sh
 data:
-  build/bin/deb-builder_amd64: usr/bin/deb-builder
+  usr/bin/deb-builder: build/bin/deb-builder_%arch%
+  usr/log/deb-builder.log: "+Empty empty log file\n"

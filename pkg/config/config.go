@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/dewep-online/deb-builder/pkg/utils"
 	"gopkg.in/yaml.v2"
@@ -35,18 +37,23 @@ type (
 	}
 )
 
-func Detect() (*Config, error) {
+var versionRegexp = regexp.MustCompile(`\d+:\d+\.\d+\.\d+`)
+
+func Detect(name string) (*Config, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 	conf := &Config{}
-	b, err := os.ReadFile(dir + "/" + ConfigFileName)
+	b, err := os.ReadFile(dir + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if err := yaml.Unmarshal(b, conf); err != nil {
 		return nil, err
+	}
+	if !versionRegexp.MatchString(conf.Version) {
+		return nil, fmt.Errorf("invalid version format, want format 0:0.0.0")
 	}
 	return conf, nil
 }
@@ -59,8 +66,8 @@ func Create() error {
 	conf := &Config{
 		Package:      filepath.Base(dir) + "-app",
 		Source:       filepath.Base(dir),
-		Version:      "0.0.1",
-		Architecture: []string{"i386", "amd64"},
+		Version:      "1:0.0.1",
+		Architecture: []string{"386", "amd64", "arm", "arm64"},
 		Maintainer:   utils.GetEnv("DEB_MAINTAINER", "User Name <user.name@example.com>"),
 		Homepage:     "http://example.com/",
 		Section:      `utils`,
@@ -69,15 +76,16 @@ func Create() error {
 		Control: Control{
 			Depends:     []string{"systemd | supervisor", "ca-certificates"},
 			Conffiles:   []string{"/etc/" + filepath.Base(dir) + "/config.yaml"},
-			Build:       "scripts/build.sh %s",
+			Build:       "scripts/build.sh",
 			PreInstall:  "scripts/preinst.sh",
 			PostInstall: "scripts/postinst.sh",
 			PreRemove:   "scripts/prerm.sh",
 			PostRemove:  "scripts/postrm.sh",
 		},
 		Data: map[string]string{
-			"build/bin/" + filepath.Base(dir): "bin/" + filepath.Base(dir),
-			"configs/config.yaml":             "etc/" + filepath.Base(dir) + "/config.yaml",
+			"bin/" + filepath.Base(dir):                  "build/bin/" + filepath.Base(dir) + "_%arch%",
+			"etc/" + filepath.Base(dir) + "/config.yaml": "configs/config.yaml",
+			"var/log/" + filepath.Base(dir) + ".log":     "+Write contents of file here after '+'",
 		},
 	}
 	b, err := yaml.Marshal(conf)
