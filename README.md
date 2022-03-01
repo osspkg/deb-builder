@@ -89,3 +89,18 @@ $ sudo apt-get update
 ```bash
 deb-builder pgp new --name='Company Name' --email='email@company' --comment='Comment about key' --path=/path_to_pgp_key
 ```
+
+# Note: compilation for ARM64 in Golang with support for CGO libraries
+
+Installing the compiler
+
+```bash
+sudo apt install gcc-aarch64-linux-gnu
+```
+
+Building a project
+
+```bash
+GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc go build -a
+```
+
