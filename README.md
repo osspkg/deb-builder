@@ -64,7 +64,7 @@ deb-builder build --base-dir=/path_to_deb_release_directory/pool/main --tmp-dir=
 deb-builder build --release-dir=/path_to_deb_release_directory --private-key=/path_to_pgp_key/private.pgp --origin='Company Name' --label='Company Info'
 ```
 
-### Add to apt [amd64]
+Add to apt [amd64]
 
 ```bash
 $ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
@@ -74,7 +74,7 @@ EOF
 $ sudo apt-get update
 ```
 
-### Add to apt [arm64]
+Add to apt [arm64]
 
 ```bash
 $ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
@@ -90,7 +90,9 @@ $ sudo apt-get update
 deb-builder pgp new --name='Company Name' --email='email@company' --comment='Comment about key' --path=/path_to_pgp_key
 ```
 
-# Note: compilation for ARM64 in Golang with support for CGO libraries
+# Note
+
+## compilation for ARM64 in Golang with support for CGO libraries
 
 Installing the compiler
 
