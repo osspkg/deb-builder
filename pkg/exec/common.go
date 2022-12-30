@@ -12,9 +12,11 @@ import (
 func Build(conf *config.Config, cb func(arch string)) {
 	for _, v := range conf.Architecture {
 
-		out, err := Run(conf.Control.Build+" "+v, nil)
-		console.Warnf(out)
-		console.FatalIfErr(err, "Failed to build resources for %s", v)
+		if len(conf.Control.Build) > 0 {
+			out, err := Run(conf.Control.Build+" "+v, nil)
+			console.Warnf(out)
+			console.FatalIfErr(err, "Failed to build resources for %s", v)
+		}
 
 		cb(v)
 	}

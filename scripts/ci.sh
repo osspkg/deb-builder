@@ -7,7 +7,7 @@ cd $PWD
 rm -rf $TOOLS_BIN
 mkdir -p $TOOLS_BIN
 
-curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $TOOLS_BIN v1.38.0
+curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $TOOLS_BIN v1.50.0
 GO111MODULE=off GOBIN=$TOOLS_BIN go get github.com/mattn/goveralls
 
 go mod download

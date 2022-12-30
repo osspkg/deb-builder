@@ -5,7 +5,7 @@ import (
 	"crypto"
 	"io"
 
-	"github.com/pkg/errors"
+	"github.com/deweppro/go-errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/clearsign"
@@ -32,22 +32,22 @@ func NewPGP() *PGP {
 func (v *PGP) LoadPrivateKey(r io.ReadSeeker, passwd string) error {
 	block, err := armor.Decode(r)
 	if err != nil {
-		return errors.Wrap(err, "Armor decode")
+		return errors.WrapMessage(err, "Armor decode")
 	}
 	if block.Type != openpgp.PrivateKeyType {
-		return errors.Wrap(err, "invalid key type")
+		return errors.WrapMessage(err, "invalid key type")
 	}
 	if _, err = r.Seek(0, 0); err != nil {
-		return errors.Wrap(err, "seek file")
+		return errors.WrapMessage(err, "seek file")
 	}
 	keys, err := openpgp.ReadArmoredKeyRing(r)
 	if err != nil {
-		return errors.Wrap(err, "read key")
+		return errors.WrapMessage(err, "read key")
 	}
 	v.key = keys[0]
 	if v.key.PrivateKey.Encrypted {
 		if err := v.key.PrivateKey.Decrypt([]byte(passwd)); err != nil {
-			return errors.Wrap(err, "invalid password")
+			return errors.WrapMessage(err, "invalid password")
 		}
 	}
 	return nil

@@ -50,6 +50,8 @@ control:
 data: # A list of files that will be packaged during the build, where the file in the destination package is preceded by a colon, and the source file is indicated after it. A placeholder %arch% is available indicating the architecture.
   bin/demo: build/bin/demo_%arch% 
   etc/demo/config.yaml: configs/config.yaml 
+  demo/file: '+write file content' # Use the `+` prefix to create a file with the specified content
+  demo/dir: '~/build' # Use the `~` prefix to copy the entire contents of a directory into a package
 ```
 
 # build deb package

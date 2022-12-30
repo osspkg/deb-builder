@@ -7,7 +7,7 @@ import (
 	"regexp"
 
 	"github.com/dewep-online/deb-builder/pkg/utils"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const ConfigFileName = ".deb.yaml"
