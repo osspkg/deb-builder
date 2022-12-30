@@ -15,6 +15,9 @@ func main() {
 	pgpCmd := console.NewCommand(func(setter console.CommandSetter) {
 		setter.Setup("pgp", "work with PGP")
 		setter.AddCommand(commands.CreatePGPCert())
+		setter.ExecFunc(func(_ []string) {
+
+		})
 	})
 
 	root.AddCommand(pgpCmd)

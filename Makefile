@@ -1,4 +1,5 @@
 SHELL=/bin/bash
+GOPATH=$(shell go env GOPATH)
 
 .PHONY: new-conf
 new-conf:

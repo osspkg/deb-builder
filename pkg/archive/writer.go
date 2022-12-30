@@ -59,6 +59,7 @@ func (v *TGZWriter) WriteData(filename string, b []byte) (string, string, error)
 		Mode:     int64(0644),
 		Size:     int64(len(b)),
 		Typeflag: tar.TypeReg,
+		Format:   tar.FormatGNU,
 	}
 	if err := v.tar.WriteHeader(hdr); err != nil {
 		return utils.CleanPath(dst), "", err
@@ -91,6 +92,7 @@ func (v *TGZWriter) WriteFile(src, dst string) (string, string, error) {
 		Mode:     int64(stat.Mode()),
 		Size:     stat.Size(),
 		Typeflag: tar.TypeReg,
+		Format:   tar.FormatGNU,
 	}
 	if err := v.tar.WriteHeader(hdr); err != nil {
 		return utils.CleanPath(dst), "", err
@@ -122,6 +124,7 @@ func (v *TGZWriter) mkdirAll(filename string) error {
 			ModTime:  time.Now(),
 			Mode:     int64(0755),
 			Typeflag: tar.TypeDir,
+			Format:   tar.FormatGNU,
 		}
 		if err := v.tar.WriteHeader(hdr); err != nil {
 			return err

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,6 +39,11 @@ func Build() console.CommandGetter {
 
 			exec.Build(conf, func(arch string) {
 
+				replacer := strings.NewReplacer(
+					`%arch%`, arch,
+					`%version%`, packages.SplitVersion(conf.Version),
+				)
+
 				// check file version
 
 				debFile, revision, carch := packages.BuildName(storeDir, conf.Package, conf.Version, arch)
@@ -53,19 +59,34 @@ func Build() console.CommandGetter {
 				tg, err := archive.NewWriter(dataFile)
 				console.FatalIfErr(err, "create data.tar.gz")
 				for dst, src := range conf.Data {
-					src = strings.ReplaceAll(src, "%arch%", arch)
+					src = replacer.Replace(src)
 					var (
 						f, h string
 						err1 error
 					)
-					if src[0] == '+' {
+
+					switch src[0] {
+					case '+':
 						f, h, err1 = tg.WriteData(dst, []byte(src)[1:])
-					} else {
-						f, h, err1 = tg.WriteFile(src, dst)
-					}
-					if err1 != nil {
 						console.FatalIfErr(err1, "write %s to data.tar.gz", src)
-					} else {
+						md5sum.Add(f, h)
+					case '~':
+						err1 := filepath.Walk(src[1:], func(path string, info fs.FileInfo, e error) error {
+							if e != nil {
+								return e
+							}
+							if info.IsDir() {
+								return nil
+							}
+							ff, hh, ee := tg.WriteFile(path, strings.ReplaceAll(path, src[1:], dst))
+							console.FatalIfErr(ee, "write %s to data.tar.gz", src)
+							md5sum.Add(ff, hh)
+							return nil
+						})
+						console.FatalIfErr(err1, "write %s to data.tar.gz", src)
+					default:
+						f, h, err1 = tg.WriteFile(src, dst)
+						console.FatalIfErr(err1, "write %s to data.tar.gz", src)
 						md5sum.Add(f, h)
 					}
 				}

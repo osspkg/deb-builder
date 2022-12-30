@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/pkg/errors"
+	"github.com/deweppro/go-errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 )
@@ -27,29 +27,29 @@ func (v *PGP) Generate(out string, name, comment, email string) error {
 
 	key, err := openpgp.NewEntity(name, comment, email, nil)
 	if err != nil {
-		return errors.Wrap(err, "generate entity")
+		return errors.WrapMessage(err, "generate entity")
 	}
 
 	if err := v.setup(key); err != nil {
-		return errors.Wrap(err, "setup entity")
+		return errors.WrapMessage(err, "setup entity")
 	}
 
 	if err := v.genPrivateKey(key, buf); err != nil {
-		return errors.Wrap(err, "generate private key")
+		return errors.WrapMessage(err, "generate private key")
 	}
 
 	if err := os.WriteFile(out+"/"+PrivateFilename, buf.Bytes(), 0644); err != nil {
-		return errors.Wrap(err, "write private key")
+		return errors.WrapMessage(err, "write private key")
 	}
 
 	buf.Reset()
 
 	if err := v.genPublicKey(key, buf); err != nil {
-		return errors.Wrap(err, "generate public key")
+		return errors.WrapMessage(err, "generate public key")
 	}
 
 	if err := os.WriteFile(out+"/"+PublicFilename, buf.Bytes(), 0600); err != nil {
-		return errors.Wrap(err, "write public key")
+		return errors.WrapMessage(err, "write public key")
 	}
 
 	return nil
@@ -58,13 +58,13 @@ func (v *PGP) Generate(out string, name, comment, email string) error {
 func (v *PGP) genPrivateKey(key *openpgp.Entity, w io.Writer) error {
 	enc, err := armor.Encode(w, openpgp.PrivateKeyType, keyHeaders)
 	if err != nil {
-		return errors.Wrap(err, "create OpenPGP Armor")
+		return errors.WrapMessage(err, "create OpenPGP Armor")
 	}
 
 	defer enc.Close() //nolint: errcheck
 
 	if err := key.SerializePrivate(enc, nil); err != nil {
-		return errors.Wrap(err, "serialize private key")
+		return errors.WrapMessage(err, "serialize private key")
 	}
 
 	return nil
@@ -73,13 +73,13 @@ func (v *PGP) genPrivateKey(key *openpgp.Entity, w io.Writer) error {
 func (v *PGP) genPublicKey(key *openpgp.Entity, w io.Writer) error {
 	enc, err := armor.Encode(w, openpgp.PublicKeyType, keyHeaders)
 	if err != nil {
-		return errors.Wrap(err, "create OpenPGP Armor")
+		return errors.WrapMessage(err, "create OpenPGP Armor")
 	}
 
 	defer enc.Close() //nolint: errcheck
 
 	if err := key.Serialize(enc); err != nil {
-		return errors.Wrap(err, "serialize public key")
+		return errors.WrapMessage(err, "serialize public key")
 	}
 
 	return nil
