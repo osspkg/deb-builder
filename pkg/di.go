@@ -1,10 +1,12 @@
 package pkg
 
-import "github.com/deweppro/go-app/application"
+import (
+	"github.com/deweppro/go-sdk/app"
+)
 
 var (
 	//Module di injector
-	Module = application.Modules{}
+	Module = app.Modules{}
 	//Config di injector
-	Config = application.Modules{}
+	Config = app.Modules{}
 )

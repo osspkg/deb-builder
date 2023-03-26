@@ -40,7 +40,7 @@ control:
   depends: # This declares an absolute dependency. A package will not be configured unless all of the packages listed in its Depends field have been correctly configured (unless there is a circular dependency as described above).
     - systemd | supervisor
     - ca-certificates
-  build: scripts/build.sh # This field defines the script for building the application from the source code. During the build, the name of the architecture is passed to the script. Example: sh scripts/build.sh amd64
+  build: scripts/build.sh %arch% # This field defines the script for building the application from the source code. During the build, the name of the architecture is passed to the script. Example: sh scripts/build.sh amd64
   conffiles: # The list of package files that are configuration files, when updating, files from this list are not overwritten with new ones, unless this is specified separately;
     - /etc/demo/config.yaml
   preinst: scripts/preinst.sh # The script executed before installation.

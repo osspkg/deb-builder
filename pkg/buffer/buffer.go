@@ -3,7 +3,7 @@ package buffer
 import (
 	"bytes"
 
-	"github.com/deweppro/go-app/console"
+	"github.com/deweppro/go-sdk/console"
 )
 
 type Buffer struct {
