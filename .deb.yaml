@@ -1,25 +1,16 @@
 package: deb-builder
 source: deb-builder
-version: '1:0.4.0'
+version: '1:0.4.1'
 architecture:
-  - 386
   - amd64
-  - arm
   - arm64
 maintainer: DewepOnline <deb@dewep.online>
-homepage: https://dewep.online/deb-builder.html
+homepage: https://dewep.online/deb-builder
 description:
   - Debian package builder
 section: web
 priority: optional
 control:
-  depends:
-    - systemd
-    - ca-certificates
-  build: scripts/build.sh
-  preinst: scripts/preinst.sh
-  postinst: scripts/postinst.sh
-  prerm: scripts/prerm.sh
-  postrm: scripts/postrm.sh
+  build: devtool build --arch=%arch%
 data:
-  usr/bin/deb-builder: build/bin/deb-builder_%arch%
+  usr/bin/deb-builder: build/deb-builder_%arch%

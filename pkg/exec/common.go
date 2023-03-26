@@ -4,21 +4,32 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/dewep-online/deb-builder/pkg/config"
-	"github.com/deweppro/go-app/console"
+	"github.com/dewep-online/deb-builder/pkg/packages"
+	"github.com/deweppro/go-sdk/console"
 )
 
-func Build(conf *config.Config, cb func(arch string)) {
-	for _, v := range conf.Architecture {
+type Replacer interface {
+	Replace(s string) string
+}
+
+func Build(conf *config.Config, cb func(arch string, repl Replacer)) {
+	for _, arch := range conf.Architecture {
+
+		replacer := strings.NewReplacer(
+			`%arch%`, arch,
+			`%version%`, packages.SplitVersion(conf.Version),
+		)
 
 		if len(conf.Control.Build) > 0 {
-			out, err := Run(conf.Control.Build+" "+v, nil)
+			out, err := Run(replacer.Replace(conf.Control.Build), nil)
 			console.Warnf(out)
-			console.FatalIfErr(err, "Failed to build resources for %s", v)
+			console.FatalIfErr(err, "Failed to build resources for %s", arch)
 		}
 
-		cb(v)
+		cb(arch, replacer)
 	}
 }
 

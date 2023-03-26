@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/dewep-online/deb-builder/pkg/config"
-	"github.com/deweppro/go-app/console"
+	"github.com/deweppro/go-sdk/console"
 )
 
 func CreateConfig() console.CommandGetter {

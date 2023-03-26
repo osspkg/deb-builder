@@ -15,4 +15,4 @@ vendorgo test -c`
 *.test
 *.out
 vendor/
-build/bin
+build/

@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/dewep-online/deb-builder/internal/commands"
 
-	"github.com/deweppro/go-app/console"
+	"github.com/deweppro/go-sdk/console"
 )
 
 func main() {

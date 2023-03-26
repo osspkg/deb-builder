@@ -18,7 +18,7 @@ import (
 	"github.com/deweppro/go-archives/ar"
 
 	"github.com/dewep-online/deb-builder/pkg/pgp"
-	"github.com/deweppro/go-app/console"
+	"github.com/deweppro/go-sdk/console"
 )
 
 const (

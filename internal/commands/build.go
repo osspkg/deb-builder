@@ -13,8 +13,8 @@ import (
 	"github.com/dewep-online/deb-builder/pkg/exec"
 	"github.com/dewep-online/deb-builder/pkg/packages"
 	"github.com/dewep-online/deb-builder/pkg/utils"
-	"github.com/deweppro/go-app/console"
 	"github.com/deweppro/go-archives/ar"
+	"github.com/deweppro/go-sdk/console"
 )
 
 func Build() console.CommandGetter {
@@ -37,12 +37,7 @@ func Build() console.CommandGetter {
 			storeDir := fmt.Sprintf("%s/%s/%s", baseDir, conf.Package[0:1], conf.Package)
 			console.FatalIfErr(os.MkdirAll(storeDir, 0755), "creating storage directory")
 
-			exec.Build(conf, func(arch string) {
-
-				replacer := strings.NewReplacer(
-					`%arch%`, arch,
-					`%version%`, packages.SplitVersion(conf.Version),
-				)
+			exec.Build(conf, func(arch string, replacer exec.Replacer) {
 
 				// check file version
 
@@ -70,24 +65,31 @@ func Build() console.CommandGetter {
 						f, h, err1 = tg.WriteData(dst, []byte(src)[1:])
 						console.FatalIfErr(err1, "write %s to data.tar.gz", src)
 						md5sum.Add(f, h)
+						console.Infof("Add: %s", dst)
 					case '~':
-						err1 := filepath.Walk(src[1:], func(path string, info fs.FileInfo, e error) error {
+						fullpath, err0 := filepath.Abs(src[1:])
+						console.FatalIfErr(err0, "get full path for %s", src[1:])
+
+						err2 := filepath.Walk(fullpath, func(path string, info fs.FileInfo, e error) error {
 							if e != nil {
 								return e
 							}
 							if info.IsDir() {
 								return nil
 							}
-							ff, hh, ee := tg.WriteFile(path, strings.ReplaceAll(path, src[1:], dst))
+							walkedFile := strings.ReplaceAll(path, fullpath, dst)
+							ff, hh, ee := tg.WriteFile(path, walkedFile)
 							console.FatalIfErr(ee, "write %s to data.tar.gz", src)
 							md5sum.Add(ff, hh)
+							console.Infof("Add: %s", walkedFile)
 							return nil
 						})
-						console.FatalIfErr(err1, "write %s to data.tar.gz", src)
+						console.FatalIfErr(err2, "write %s to data.tar.gz", src)
 					default:
 						f, h, err1 = tg.WriteFile(src, dst)
 						console.FatalIfErr(err1, "write %s to data.tar.gz", src)
 						md5sum.Add(f, h)
+						console.Infof("Add: %s", dst)
 					}
 				}
 				console.FatalIfErr(tg.Close(), "close data.tar.gz")

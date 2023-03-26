@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/dewep-online/deb-builder/pkg/pgp"
-	"github.com/deweppro/go-app/console"
+	"github.com/deweppro/go-sdk/console"
 )
 
 func CreatePGPCert() console.CommandGetter {
