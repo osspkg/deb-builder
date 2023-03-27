@@ -8,8 +8,8 @@ github.com/deweppro/go-archives v1.0.4 h1:CB5nX5ll7PyDU5s5yFmBq9Dn5xZGjSRumawZRZ
 github.com/deweppro/go-archives v1.0.4/go.mod h1:3OVhSu087B6aIsFGBzEMCE6iZzBC39bI/MB4qAOlQVI=
 github.com/deweppro/go-errors v0.0.4 h1:TW91LRqHAkUauDJ5lzz73LziANH7mjli1tyvtwzXRCM=
 github.com/deweppro/go-errors v0.0.4/go.mod h1:BLsNcxaHh1fjNl/o1TB69JwA8XueSk/Nszkvw4ZwI/I=
-github.com/deweppro/go-sdk v1.1.6 h1:yjCsPMc02fGw2nZ/0grorPovTu1J6Njrz8L821QuSiA=
-github.com/deweppro/go-sdk v1.1.6/go.mod h1:orW509URVLItj8Xah+PwcEyjwVi7L3lTbVfEeg1T8/c=
+github.com/deweppro/go-sdk v1.1.7 h1:M7kdRp1Jzx+llKyJ8urIBRSWl3L99pDD+ZL+iiIw5Ac=
+github.com/deweppro/go-sdk v1.1.7/go.mod h1:orW509URVLItj8Xah+PwcEyjwVi7L3lTbVfEeg1T8/c=
 github.com/go-sql-driver/mysql v1.7.0/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
