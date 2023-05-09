@@ -7,7 +7,7 @@ require (
 	github.com/deweppro/go-errors v0.0.4
 	github.com/deweppro/go-sdk v1.1.6
 	github.com/stretchr/testify v1.8.2
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.9.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
