@@ -1,7 +1,7 @@
 
 .PHONY: install
 install:
-	go install github.com/dewep-online/devtool@latest
+	go install github.com/osspkg/devtool@latest
 
 .PHONY: setup
 setup:
@@ -10,6 +10,10 @@ setup:
 .PHONY: lint
 lint:
 	devtool lint
+
+.PHONY: license
+license:
+	devtool license
 
 .PHONY: build
 build:

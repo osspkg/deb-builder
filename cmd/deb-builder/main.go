@@ -1,9 +1,13 @@
+/*
+ *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
+ */
+
 package main
 
 import (
-	"github.com/dewep-online/deb-builder/internal/commands"
-
-	"github.com/deweppro/go-sdk/console"
+	"github.com/osspkg/deb-builder/internal/commands"
+	"github.com/osspkg/go-sdk/console"
 )
 
 func main() {

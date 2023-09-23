@@ -1,3 +1,8 @@
+/*
+ *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
+ */
+
 package commands
 
 import (
@@ -10,15 +15,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dewep-online/deb-builder/pkg/archive"
-	"github.com/dewep-online/deb-builder/pkg/buffer"
-	"github.com/dewep-online/deb-builder/pkg/hash"
-	"github.com/dewep-online/deb-builder/pkg/packages"
-	"github.com/dewep-online/deb-builder/pkg/utils"
-	"github.com/deweppro/go-archives/ar"
-
-	"github.com/dewep-online/deb-builder/pkg/pgp"
-	"github.com/deweppro/go-sdk/console"
+	"github.com/osspkg/deb-builder/pkg/archive"
+	"github.com/osspkg/deb-builder/pkg/buffer"
+	"github.com/osspkg/deb-builder/pkg/hash"
+	"github.com/osspkg/deb-builder/pkg/packages"
+	"github.com/osspkg/deb-builder/pkg/pgp"
+	"github.com/osspkg/deb-builder/pkg/utils"
+	"github.com/osspkg/go-archives/ar"
+	"github.com/osspkg/go-sdk/console"
 )
 
 const (
@@ -233,11 +237,12 @@ func GenerateRelease() console.CommandGetter {
 			info := `
 =========================== amd64 ===========================
 
-$ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
-$ sudo tee /etc/apt/sources.list.d/yourdomain.list <<'EOF'
-deb [arch=amd64] https://yourdomain/ stable main
+curl -fsSL https://[yourdomain]/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/[yourdomain].gpg
+sudo chmod a+r /etc/apt/keyrings/[yourdomain].gpg
+sudo tee /etc/apt/sources.list.d/[yourdomain].list <<'EOF'
+deb [arch=arm64 signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ stable main
 EOF
-$ sudo apt-get update
+sudo apt update
 
 `
 

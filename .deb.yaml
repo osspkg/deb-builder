@@ -1,11 +1,11 @@
 package: deb-builder
 source: deb-builder
-version: '1:0.4.1'
+version: '1:0.5.0'
 architecture:
   - amd64
   - arm64
-maintainer: DewepOnline <deb@dewep.online>
-homepage: https://dewep.online/deb-builder
+maintainer: The OSSPkg Team <github@osspkg.com>
+homepage: https://deb.osspkg.com/
 description:
   - Debian package builder
 section: web

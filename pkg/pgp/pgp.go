@@ -1,11 +1,16 @@
+/*
+ *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
+ */
+
 package pgp
 
 import (
 	"bytes"
 	"crypto"
+	"fmt"
 	"io"
 
-	"github.com/deweppro/go-errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/clearsign"
@@ -32,22 +37,22 @@ func NewPGP() *PGP {
 func (v *PGP) LoadPrivateKey(r io.ReadSeeker, passwd string) error {
 	block, err := armor.Decode(r)
 	if err != nil {
-		return errors.WrapMessage(err, "Armor decode")
+		return fmt.Errorf("armor decode: %w", err)
 	}
 	if block.Type != openpgp.PrivateKeyType {
-		return errors.WrapMessage(err, "invalid key type")
+		return fmt.Errorf("invalid key type: %w", err)
 	}
 	if _, err = r.Seek(0, 0); err != nil {
-		return errors.WrapMessage(err, "seek file")
+		return fmt.Errorf("seek file: %w", err)
 	}
 	keys, err := openpgp.ReadArmoredKeyRing(r)
 	if err != nil {
-		return errors.WrapMessage(err, "read key")
+		return fmt.Errorf("read key: %w", err)
 	}
 	v.key = keys[0]
 	if v.key.PrivateKey.Encrypted {
-		if err := v.key.PrivateKey.Decrypt([]byte(passwd)); err != nil {
-			return errors.WrapMessage(err, "invalid password")
+		if err = v.key.PrivateKey.Decrypt([]byte(passwd)); err != nil {
+			return fmt.Errorf("invalid password: %w", err)
 		}
 	}
 	return nil

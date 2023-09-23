@@ -1,15 +1,15 @@
 
 # deb-builder
 
-[![Coverage Status](https://coveralls.io/repos/github/dewep-online/deb-builder/badge.svg?branch=master)](https://coveralls.io/github/dewep-online/deb-builder?branch=master)
-[![Release](https://img.shields.io/github/release/dewep-online/deb-builder.svg?style=flat-square)](https://github.com/dewep-online/deb-builder/releases/latest)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dewep-online/deb-builder)](https://goreportcard.com/report/github.com/dewep-online/deb-builder)
-[![CI](https://github.com/dewep-online/deb-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/dewep-online/deb-builder/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/osspkg/deb-builder/badge.svg?branch=master)](https://coveralls.io/github/osspkg/deb-builder?branch=master)
+[![Release](https://img.shields.io/github/release/osspkg/deb-builder.svg?style=flat-square)](https://github.com/osspkg/deb-builder/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/osspkg/deb-builder)](https://goreportcard.com/report/github.com/osspkg/deb-builder)
+[![CI](https://github.com/osspkg/deb-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/osspkg/deb-builder/actions/workflows/ci.yml)
 
 # install
 
 ```go
- go install github.com/dewep-online/deb-builder/cmd/deb-builder@latest
+ go install github.com/osspkg/deb-builder/cmd/deb-builder@latest
 ```
 
 # create config file `.deb.yaml`
@@ -63,27 +63,29 @@ deb-builder build --base-dir=/path_to_deb_release_directory/pool/main --tmp-dir=
 # build release repos
 
 ```bash
-deb-builder build --release-dir=/path_to_deb_release_directory --private-key=/path_to_pgp_key/private.pgp --origin='Company Name' --label='Company Info'
+deb-builder release --release-dir=/path_to_deb_release_directory --private-key=/path_to_pgp_key/private.pgp --origin='Company Name' --label='Company Info'
 ```
 
 Add to apt [amd64]
 
 ```bash
-$ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
-$ sudo tee /etc/apt/sources.list.d/yourdomain.list <<'EOF'
-deb [arch=amd64] https://yourdomain/ stable main
+curl -fsSL https://[yourdomain]/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/[yourdomain].gpg
+sudo chmod a+r /etc/apt/keyrings/[yourdomain].gpg
+sudo tee /etc/apt/sources.list.d/[yourdomain].list <<'EOF'
+deb [arch=amd64 signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ stable main
 EOF
-$ sudo apt-get update
+sudo apt update
 ```
 
 Add to apt [arm64]
 
 ```bash
-$ wget -qO - https://yourdomain/key.gpg | sudo apt-key add -
-$ sudo tee /etc/apt/sources.list.d/yourdomain.list <<'EOF'
-deb [arch=arm64] https://yourdomain/ stable main
+curl -fsSL https://[yourdomain]/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/[yourdomain].gpg
+sudo chmod a+r /etc/apt/keyrings/[yourdomain].gpg
+sudo tee /etc/apt/sources.list.d/[yourdomain].list <<'EOF'
+deb [arch=arm64 signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ stable main
 EOF
-$ sudo apt-get update
+sudo apt update
 ```
 
 # build pgp key

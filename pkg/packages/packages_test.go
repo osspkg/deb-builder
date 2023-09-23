@@ -1,3 +1,8 @@
+/*
+ *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
+ */
+
 package packages
 
 import (
@@ -91,7 +96,7 @@ Description: Launcher for the Steam software distribution service
 				Source:       "uri-one",
 				Version:      "0.0.1",
 				Architecture: "amd64",
-				Maintainer:   "DewepPro <support@dewep.pro>",
+				Maintainer:   "osspkg <support@dewep.pro>",
 				Filename:     "",
 				Size:         0,
 				MD5sum:       "",
@@ -109,7 +114,7 @@ Description: Link shortening service `,
 Source: uri-one
 Version: 0.0.1
 Architecture: amd64
-Maintainer: DewepPro <support@dewep.pro>
+Maintainer: osspkg <support@dewep.pro>
 Installed-Size: 13287
 Depends: systemd, ca-certificates
 Section: web

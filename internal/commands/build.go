@@ -1,3 +1,8 @@
+/*
+ *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
+ */
+
 package commands
 
 import (
@@ -7,14 +12,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dewep-online/deb-builder/pkg/archive"
-	"github.com/dewep-online/deb-builder/pkg/config"
-	"github.com/dewep-online/deb-builder/pkg/control"
-	"github.com/dewep-online/deb-builder/pkg/exec"
-	"github.com/dewep-online/deb-builder/pkg/packages"
-	"github.com/dewep-online/deb-builder/pkg/utils"
-	"github.com/deweppro/go-archives/ar"
-	"github.com/deweppro/go-sdk/console"
+	"github.com/osspkg/deb-builder/pkg/archive"
+	"github.com/osspkg/deb-builder/pkg/config"
+	"github.com/osspkg/deb-builder/pkg/control"
+	"github.com/osspkg/deb-builder/pkg/exec"
+	"github.com/osspkg/deb-builder/pkg/packages"
+	"github.com/osspkg/deb-builder/pkg/utils"
+	"github.com/osspkg/go-archives/ar"
+	"github.com/osspkg/go-sdk/console"
 )
 
 func Build() console.CommandGetter {

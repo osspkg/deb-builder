@@ -1,3 +1,8 @@
+/*
+ *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
+ */
+
 package exec
 
 import (
@@ -6,9 +11,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/dewep-online/deb-builder/pkg/config"
-	"github.com/dewep-online/deb-builder/pkg/packages"
-	"github.com/deweppro/go-sdk/console"
+	"github.com/osspkg/deb-builder/pkg/config"
+	"github.com/osspkg/deb-builder/pkg/packages"
+	"github.com/osspkg/go-sdk/console"
 )
 
 type Replacer interface {
@@ -24,7 +29,7 @@ func Build(conf *config.Config, cb func(arch string, repl Replacer)) {
 		)
 
 		if len(conf.Control.Build) > 0 {
-			out, err := Run(replacer.Replace(conf.Control.Build), nil)
+			out, err := execCommand(replacer.Replace(conf.Control.Build), nil)
 			console.Warnf(out)
 			console.FatalIfErr(err, "Failed to build resources for %s", arch)
 		}
@@ -33,7 +38,7 @@ func Build(conf *config.Config, cb func(arch string, repl Replacer)) {
 	}
 }
 
-func Run(cmd string, env []string) (string, error) {
+func execCommand(cmd string, env []string) (string, error) {
 	c := exec.Command("/bin/sh", "-xec", fmt.Sprintln(cmd, " <&-"))
 	if len(env) > 0 {
 		c.Env = append(os.Environ(), env...)

@@ -11,8 +11,5 @@
 .idea
 .vscode
 .tools
-vendorgo test -c`
-*.test
-*.out
 vendor/
 build/
