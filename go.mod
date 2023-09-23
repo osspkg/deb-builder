@@ -6,7 +6,7 @@ require (
 	github.com/osspkg/go-archives v1.0.5
 	github.com/osspkg/go-sdk v1.3.6
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/crypto v0.11.0
+	golang.org/x/crypto v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
