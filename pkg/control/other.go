@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Copyright (c) 2021-2025 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
  *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
  */
 
@@ -9,6 +9,8 @@ import (
 	"bytes"
 	"os"
 	"sort"
+
+	"go.osspkg.com/ioutils/fs"
 
 	"github.com/osspkg/deb-builder/pkg/config"
 	"github.com/osspkg/deb-builder/pkg/utils"
@@ -60,8 +62,8 @@ func (v *Other) WriteTo(dir string) error {
 	}
 
 	for _, file := range files {
-		if utils.FileExist(file.Src) {
-			if err := utils.CopyFile(file.Dst, file.Src); err != nil {
+		if fs.FileExist(file.Src) {
+			if err := fs.CopyFile(file.Dst, file.Src, 0644); err != nil {
 				return err
 			}
 			v.files = append(v.files, file.Dst)

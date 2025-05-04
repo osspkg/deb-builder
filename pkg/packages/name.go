@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Copyright (c) 2021-2025 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
  *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
  */
 
@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"go.osspkg.com/ioutils/fs"
 
 	"github.com/osspkg/deb-builder/pkg/utils"
 )
@@ -45,7 +47,7 @@ func BuildName(dir, name, version, arch string) (string, string, string) {
 			revision++
 		})
 
-		if !utils.FileExist(path) {
+		if !fs.FileExist(path) {
 			return path, subver, arch
 		}
 	}
