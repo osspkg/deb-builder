@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Copyright (c) 2021-2025 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
  *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
  */
 
@@ -142,7 +142,11 @@ func encode(in interface{}) ([]byte, error) {
 		if tagField != "_" {
 			result = fmt.Sprintf("%s: %v\n", tagField, field.Interface())
 		} else {
-			result = field.Interface().(string)
+			var ok bool
+			result, ok = field.Interface().(string)
+			if !ok {
+				return nil, fmt.Errorf("field not a string")
+			}
 		}
 
 		if _, err := buf.WriteString(result); err != nil {

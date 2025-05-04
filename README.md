@@ -1,7 +1,6 @@
 
 # deb-builder
 
-[![Coverage Status](https://coveralls.io/repos/github/osspkg/deb-builder/badge.svg?branch=master)](https://coveralls.io/github/osspkg/deb-builder?branch=master)
 [![Release](https://img.shields.io/github/release/osspkg/deb-builder.svg?style=flat-square)](https://github.com/osspkg/deb-builder/releases/latest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/osspkg/deb-builder)](https://goreportcard.com/report/github.com/osspkg/deb-builder)
 [![CI](https://github.com/osspkg/deb-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/osspkg/deb-builder/actions/workflows/ci.yml)
@@ -14,7 +13,7 @@
 
 # create config file `.deb.yaml`
 
-```bash
+```shell
 deb-builder config
 ```
 
@@ -23,7 +22,7 @@ example:
 ```yaml
 package: demo-app # The name of the binary package.
 source: demo # This field identifies the source package name.
-version: 1:0.0.1 # The version number of a package. The format is: [epoch:]upstream_version.
+version: 1:0.0.1 # The version number of a package. The format is: [epoch:]upstream_version. Or use `git` for build version by git commit.
 architecture: # OS Architecture: all, 386, amd64, arm, arm64
   - 386
   - amd64
@@ -50,20 +49,53 @@ control:
 data: # A list of files that will be packaged during the build, where the file in the destination package is preceded by a colon, and the source file is indicated after it. A placeholder %arch% is available indicating the architecture.
   bin/demo: build/bin/demo_%arch% 
   etc/demo/config.yaml: configs/config.yaml 
-  demo/file: '+write file content' # Use the `+` prefix to create a file with the specified content
-  demo/dir: '~/build' # Use the `~` prefix to copy the entire contents of a directory into a package
+  demo/file: 'c:write file content' 
+  demo/dir: 'd:/build' 
+  demo/dir1: 'e:/build/.*.(go|js)' 
 ```
+
+data prefix:
+- `c:`, `+`: create a file with the specified content
+- `d:`, `~`: copy the entire contents of a directory into a package
+- `e:`: copy the files with the specified regexp to the package
 
 # build deb package
 
-```bash
-deb-builder build --base-dir=/path_to_deb_release_directory/pool/main --tmp-dir=/path/to/build/directory
+```shell
+deb-builder build \
+  --base-dir=/path_to_deb_release_directory/pool/main \
+  --tmp-dir=/path/to/build/directory
+```
+
+or use env
+
+```shell
+DEB_STORAGE_BASE_DIR=/path_to_deb_release_directory/pool/main \
+DEB_BUILD_DIR=/path/to/build/directory \
+deb-builder build
 ```
 
 # build release repos
 
-```bash
-deb-builder release --release-dir=/path_to_deb_release_directory --private-key=/path_to_pgp_key/private.pgp --origin='Company Name' --label='Company Info'
+```shell
+deb-builder release \
+  --release-dir=/path_to_deb_release_directory \
+  --private-key=/path_to_pgp_key/private.pgp \
+  --passwd='' \
+  --origin='Company Name' \
+  --label='Company Info'
+```
+
+or use env
+
+```shell
+DEB_STORAGE_BASE_DIR=/path_to_deb_release_directory/pool/main \
+DEB_BUILD_DIR=/path/to/build/directory \
+DEB_PGP_KEY=/path_to_pgp_key/private.pgp \
+DEB_PGP_KEY_PASSWD='' \
+DEB_RELEASE_ORIGIN='Company Name' \
+DEB_RELEASE_LABEL='Company Info' \
+deb-builder release
 ```
 
 Add to apt [amd64]

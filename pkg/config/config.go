@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021-2023 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Copyright (c) 2021-2025 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
  *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
  */
 
@@ -11,8 +11,11 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/osspkg/deb-builder/pkg/utils"
+	"go.osspkg.com/ioutils/fs"
 	"gopkg.in/yaml.v3"
+
+	"github.com/osspkg/deb-builder/pkg/exec"
+	"github.com/osspkg/deb-builder/pkg/utils"
 )
 
 const ConfigFileName = ".deb.yaml"
@@ -45,33 +48,32 @@ type (
 var versionRegexp = regexp.MustCompile(`\d+:\d+\.\d+\.\d+`)
 
 func Detect(name string) (*Config, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
+	dir := fs.CurrentDir()
 	conf := &Config{}
 	b, err := os.ReadFile(dir + "/" + name)
 	if err != nil {
 		return nil, err
 	}
-	if err := yaml.Unmarshal(b, conf); err != nil {
+	if err = yaml.Unmarshal(b, conf); err != nil {
 		return nil, err
 	}
-	if !versionRegexp.MatchString(conf.Version) {
+	if conf.Version == "git" {
+		conf.Version, err = exec.GitVersion()
+		if err != nil {
+			return nil, fmt.Errorf("fail build git version: %w", err)
+		}
+	} else if !versionRegexp.MatchString(conf.Version) {
 		return nil, fmt.Errorf("invalid version format, want format 0:0.0.0")
 	}
 	return conf, nil
 }
 
 func Create() error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
+	dir := fs.CurrentDir()
 	conf := &Config{
-		Package:      filepath.Base(dir) + "-app",
+		Package:      filepath.Base(dir),
 		Source:       filepath.Base(dir),
-		Version:      "1:0.0.1",
+		Version:      "1:0.0.1 # or use `git` for build version by git commit",
 		Architecture: []string{"386", "amd64", "arm", "arm64"},
 		Maintainer:   utils.GetEnv("DEB_MAINTAINER", "User Name <user.name@example.com>"),
 		Homepage:     "http://example.com/",
@@ -81,7 +83,7 @@ func Create() error {
 		Control: Control{
 			Depends:     []string{"systemd | supervisor", "ca-certificates"},
 			Conffiles:   []string{"/etc/" + filepath.Base(dir) + "/config.yaml"},
-			Build:       "scripts/build.sh",
+			Build:       "scripts/build.sh --arch=%arch% --ver=%ver%",
 			PreInstall:  "scripts/preinst.sh",
 			PostInstall: "scripts/postinst.sh",
 			PreRemove:   "scripts/prerm.sh",
@@ -97,7 +99,7 @@ func Create() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(dir+"/"+ConfigFileName, b, 0755); err != nil {
+	if err = os.WriteFile(dir+"/"+ConfigFileName, b, 0755); err != nil {
 		return err
 	}
 	return nil
