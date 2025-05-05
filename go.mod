@@ -3,7 +3,7 @@ module github.com/osspkg/deb-builder
 go 1.23.6
 
 require (
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.10.0
 	go.osspkg.com/archives v1.1.0
 	go.osspkg.com/console v0.3.3
 	go.osspkg.com/ioutils v0.5.1
