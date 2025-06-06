@@ -65,7 +65,7 @@ func GenerateRelease() console.CommandGetter {
 
 			for _, arch := range archs {
 				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
-				console.FatalIfErr(os.MkdirAll(path+dir, 0755), "validate dirs")
+				console.FatalIfErr(os.MkdirAll(dir, 0755), "validate dirs")
 			}
 
 			/**
