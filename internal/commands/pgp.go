@@ -6,10 +6,16 @@
 package commands
 
 import (
-	"go.osspkg.com/console"
-	"go.osspkg.com/ioutils/fs"
+	"os"
 
-	"github.com/osspkg/deb-builder/pkg/pgp"
+	"go.osspkg.com/console"
+	"go.osspkg.com/encrypt/pgp"
+	"go.osspkg.com/ioutils/fs"
+)
+
+const (
+	publicFilename  = "/public.pgp"
+	privateFilename = "/private.pgp"
 )
 
 func CreatePGPCert() console.CommandGetter {
@@ -25,7 +31,10 @@ func CreatePGPCert() console.CommandGetter {
 			if len(path) == 0 {
 				path = fs.CurrentDir()
 			}
-			console.FatalIfErr(pgp.NewPGP().Generate(path, name, comment, email), "generate cert")
+			crt, err := pgp.NewCertSHA512(pgp.Config{Name: name, Email: email, Comment: comment})
+			console.FatalIfErr(err, "generate cert")
+			console.FatalIfErr(os.WriteFile(path+privateFilename, crt.Private, 0600), "save private key")
+			console.FatalIfErr(os.WriteFile(path+publicFilename, crt.Public, 0644), "save public cert")
 		})
 	})
 }

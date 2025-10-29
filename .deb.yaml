@@ -1,16 +1,18 @@
-package: deb-builder
-source: deb-builder
-version: '1:0.5.0'
-architecture:
-  - amd64
-  - arm64
-maintainer: The OSSPkg Team <github@osspkg.com>
-homepage: https://deb.osspkg.com/
-description:
-  - Debian package builder
-section: web
-priority: optional
-control:
-  build: devtool build --arch=%arch%
-data:
-  usr/bin/deb-builder: build/deb-builder_%arch%
+ver: "2"
+packages:
+  - package: deb-builder
+    source: deb-builder
+    version: 'git'
+    architecture:
+      - amd64
+      - arm64
+    maintainer: The OSSPkg Team <github@osspkg.com>
+    homepage: https://deb.osspkg.com/
+    description:
+      - Debian package builder
+    section: web
+    priority: optional
+    control:
+      build: goppy build --arch=%arch%
+    data:
+      usr/bin/deb-builder: build/deb-builder_%arch%
