@@ -32,8 +32,9 @@ func Build() console.CommandGetter {
 			flag.StringVar("config", config.FileName, "Config file")
 			flag.StringVar("base-dir", utils.GetEnv("DEB_STORAGE_BASE_DIR", "./build"), "Deb package base storage")
 			flag.StringVar("tmp-dir", utils.GetEnv("DEB_BUILD_DIR", "/tmp/deb-build"), "Deb package build dir")
+			flag.Bool("no-revision", "Don`t build revision deb package")
 		})
-		setter.ExecFunc(func(_ []string, debConf, baseDir, tmpDir string) {
+		setter.ExecFunc(func(_ []string, debConf, baseDir, tmpDir string, noRevision bool) {
 			configs, err := config.Detect(debConf)
 			console.FatalIfErr(err, "deb config not found")
 
@@ -50,7 +51,7 @@ func Build() console.CommandGetter {
 
 					// check file version
 
-					debFile, revision, carch := packages.BuildName(storeDir, conf.Package, conf.Version, arch)
+					debFile, revision, carch := packages.BuildName(storeDir, conf.Package, conf.Version, arch, noRevision)
 
 					// package
 
@@ -190,6 +191,10 @@ func Build() console.CommandGetter {
 					console.FatalIfErr(tg.Close(), "close file control.tar.gz")
 
 					// build deb
+
+					if noRevision {
+						console.FatalIfErr(os.RemoveAll(debFile), "remove old %s", debFile)
+					}
 
 					deb, err := ar.Open(debFile, 0644)
 					console.FatalIfErr(err, "create %s", debFile)

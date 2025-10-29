@@ -30,7 +30,7 @@ pre-commit: license setup lint build tests
 ci: install setup lint build tests
 
 deb:
-	deb-builder build --base-dir=./build --tmp-dir=/tmp/deb-build
+	deb-builder build --base-dir=./build --tmp-dir=/tmp/deb-build --no-revision
 
 local: build
 	cp ./build/deb-builder_amd64 $(GOPATH)/bin/deb-builder
