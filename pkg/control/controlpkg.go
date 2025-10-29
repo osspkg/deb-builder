@@ -5,16 +5,12 @@
 
 package control
 
-import "github.com/osspkg/deb-builder/pkg/config"
-
 type Pkg struct {
-	conf  *config.Config
 	files []string
 }
 
-func NewControlPkg(conf *config.Config) *Pkg {
+func NewControlPkg() *Pkg {
 	return &Pkg{
-		conf:  conf,
 		files: make([]string, 0),
 	}
 }

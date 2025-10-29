@@ -6,6 +6,7 @@
 package exec
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -54,50 +55,81 @@ func execCommand(cmd string, line bool, envs ...string) (string, error) {
 	}
 	c.Dir = fs.CurrentDir()
 	b, err := c.CombinedOutput()
-	return string(b), err
+	return string(bytes.TrimSpace(b)), err
 }
 
 func GitVersion() (string, error) {
-	out, err := execCommand("git status --porcelain", false)
+	out, err := execCommand(`git status --porcelain 2>/dev/null`, false)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("check uncommitted changes: %w", err)
 	}
-	out = strings.TrimSpace(out)
-	if len(strings.TrimSpace(out)) > 0 {
+	if len(out) > 0 {
 		return "", fmt.Errorf("has uncommitted changes")
 	}
 
-	out, err = execCommand("git for-each-ref --count=1 --sort=\"-committerdate\" "+
-		"--format=\"%(refname:lstrip=-1)-build%(committerdate:format:%Y%m%d%H%M%S)-%(objectname:short=12)\" "+
-		"refs/tags --merged HEAD~0\n", false)
+	lastTag, err := execCommand(`git describe --tags --abbrev=0 2>/dev/null`, false)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get last git tag: %w", err)
 	}
-	out = strings.TrimSpace(out)
-	if len(out) > 0 {
-		info := strings.SplitN(out, ".", 2)
-		major, err0 := strconv.ParseInt(strings.TrimPrefix(info[0], "v"), 10, 64)
-		if err0 != nil {
-			return "", err0
-		}
-		var epoch int64 = 1
-		if major > 0 {
-			epoch = major
-		}
-
-		return fmt.Sprintf("%d:%d.%s", epoch, major, info[1]), nil
+	if len(lastTag) == 0 {
+		lastTag = "v0.0.0"
 	}
 
-	out, err = execCommand("git -c log.showsignature=false log -1 --format=%H:%ct", false)
+	var epoch int64 = 1
+
+	info := strings.SplitN(lastTag, ".", 2)
+	major, err := strconv.ParseInt(strings.TrimPrefix(info[0], "v"), 10, 64)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("parse major version: %w", err)
 	}
-	info := strings.Split(strings.TrimSpace(out), ":")
-	hash := info[0][0:12]
-	secs, err := strconv.ParseInt(info[1], 10, 64)
+	if major > 1 {
+		epoch = major
+	}
+
+	branch, err := execCommand(`git branch --show-current`, false)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get branch: %w", err)
 	}
-	ts := time.Unix(secs, 0).Format("20060102150405")
-	return fmt.Sprintf("1:0.0.1-build%s-%s", ts, hash), nil
+
+	revTag := lastTag + ".."
+	if lastTag == "v0.0.0" {
+		revTag = ""
+	}
+	out, err = execCommand(fmt.Sprintf(`git rev-list --count %sHEAD`, revTag), false)
+	if err != nil {
+		return "", fmt.Errorf("get rev list: %w", err)
+	}
+	commitCount, err := strconv.ParseInt(out, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("parse commit count: %w", err)
+	}
+
+	lastHash, err := execCommand(`git rev-parse --short HEAD`, false)
+	if err != nil {
+		return "", fmt.Errorf("get last commit: %w", err)
+	}
+
+	out, err = execCommand(`git -c log.showsignature=false log -1 --format=%ct`, false)
+	if err != nil {
+		return "", fmt.Errorf("get last commit date: %w", err)
+	}
+	ts, err := strconv.ParseInt(out, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("parse timestamp: %w", err)
+	}
+	lastHashDate := time.Unix(ts, 0).Format("20060102")
+
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "%d:%s", epoch, strings.TrimPrefix(lastTag, "v"))
+	if commitCount > 0 {
+		switch branch {
+		case "master", "main":
+			fmt.Fprintf(&buf, "-%d", commitCount)
+		default:
+			fmt.Fprintf(&buf, "~dev.%d", commitCount)
+		}
+		fmt.Fprintf(&buf, "-git.%s-%s", lastHashDate, lastHash)
+	}
+
+	return buf.String(), nil
 }

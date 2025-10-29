@@ -19,7 +19,7 @@ const descriptionMaxLen = 70
 
 type (
 	Control struct {
-		conf *config.Config
+		conf config.Config
 		size int64
 		arch string
 	}
@@ -38,7 +38,7 @@ type (
 	}
 )
 
-func NewControl(conf *config.Config) *Control {
+func NewControl(conf config.Config) *Control {
 	return &Control{
 		conf: conf,
 	}

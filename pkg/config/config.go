@@ -18,9 +18,17 @@ import (
 	"github.com/osspkg/deb-builder/pkg/utils"
 )
 
-const ConfigFileName = ".deb.yaml"
+const FileName = ".deb.yaml"
 
 type (
+	Version struct {
+		Version string `yaml:"ver"`
+	}
+
+	Multi struct {
+		Version  string   `yaml:"ver"`
+		Packages []Config `yaml:"packages"`
+	}
 	Config struct {
 		Package      string            `yaml:"package"`
 		Source       string            `yaml:"source"`
@@ -47,30 +55,53 @@ type (
 
 var versionRegexp = regexp.MustCompile(`\d+:\d+\.\d+\.\d+`)
 
-func Detect(name string) (*Config, error) {
+func Detect(name string) ([]Config, error) {
 	dir := fs.CurrentDir()
-	conf := &Config{}
+
 	b, err := os.ReadFile(dir + "/" + name)
 	if err != nil {
 		return nil, err
 	}
-	if err = yaml.Unmarshal(b, conf); err != nil {
+
+	ver := Version{}
+	if err = yaml.Unmarshal(b, &ver); err != nil {
 		return nil, err
 	}
-	if conf.Version == "git" {
-		conf.Version, err = exec.GitVersion()
-		if err != nil {
-			return nil, fmt.Errorf("fail build git version: %w", err)
+
+	var out []Config
+	switch ver.Version {
+	case "", "0", "1":
+		cfg := Config{}
+		if err = yaml.Unmarshal(b, &cfg); err != nil {
+			return nil, err
 		}
-	} else if !versionRegexp.MatchString(conf.Version) {
-		return nil, fmt.Errorf("invalid version format, want format 0:0.0.0")
+		out = append(out, cfg)
+
+	case "2":
+		cfg := Multi{}
+		if err = yaml.Unmarshal(b, &cfg); err != nil {
+			return nil, err
+		}
+		out = append(out, cfg.Packages...)
 	}
-	return conf, nil
+
+	for i := 0; i < len(out); i++ {
+		if out[i].Version == "git" {
+			out[i].Version, err = exec.GitVersion()
+			if err != nil {
+				return nil, fmt.Errorf("fail build git version: %w", err)
+			}
+		} else if !versionRegexp.MatchString(out[i].Version) {
+			return nil, fmt.Errorf("invalid version format, want format 0:0.0.0")
+		}
+	}
+
+	return out, nil
 }
 
 func Create() error {
 	dir := fs.CurrentDir()
-	conf := &Config{
+	conf := Config{
 		Package:      filepath.Base(dir),
 		Source:       filepath.Base(dir),
 		Version:      "1:0.0.1 # or use `git` for build version by git commit",
@@ -95,11 +126,17 @@ func Create() error {
 			"var/log/" + filepath.Base(dir) + ".log":     "+Write contents of file here after '+'",
 		},
 	}
-	b, err := yaml.Marshal(conf)
+
+	cfg := Multi{
+		Version:  "2",
+		Packages: []Config{conf},
+	}
+
+	b, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
-	if err = os.WriteFile(dir+"/"+ConfigFileName, b, 0755); err != nil {
+	if err = os.WriteFile(dir+"/"+FileName, b, 0755); err != nil {
 		return err
 	}
 	return nil

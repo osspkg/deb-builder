@@ -18,7 +18,7 @@ import (
 
 type (
 	Other struct {
-		conf  *config.Config
+		conf  config.Config
 		files []string
 	}
 	copyFile struct {
@@ -27,7 +27,7 @@ type (
 	}
 )
 
-func NewOther(conf *config.Config) *Other {
+func NewOther(conf config.Config) *Other {
 	return &Other{
 		conf:  conf,
 		files: make([]string, 0),

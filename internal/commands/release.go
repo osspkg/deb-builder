@@ -17,12 +17,12 @@ import (
 
 	"go.osspkg.com/archives/ar"
 	"go.osspkg.com/console"
+	"go.osspkg.com/encrypt/pgp"
 
 	"github.com/osspkg/deb-builder/pkg/archive"
 	"github.com/osspkg/deb-builder/pkg/buffer"
 	"github.com/osspkg/deb-builder/pkg/hash"
 	"github.com/osspkg/deb-builder/pkg/packages"
-	"github.com/osspkg/deb-builder/pkg/pgp"
 	"github.com/osspkg/deb-builder/pkg/utils"
 )
 
@@ -47,17 +47,12 @@ func GenerateRelease() console.CommandGetter {
 			f.StringVar("dist", utils.GetEnv("DEB_DISTRIBUTION", "stable"), "release distribution")
 			f.StringVar("comp", utils.GetEnv("DEB_COMPONENT", "main"), "release component")
 		})
-		setter.ExecFunc(func(_ []string, path, tmp, priv, passwd, origin, label, dist, comp string) {
+		setter.ExecFunc(func(_ []string, path, tmp, privKeyFile, passwd, origin, label, dist, comp string) {
 			/**
 			LOAD PGP
 			*/
-			pgpStore := pgp.NewPGP()
-			privKeyFile, err := os.Open(priv)
-			console.FatalIfErr(err, "open PGP private key")
-			defer func() {
-				console.FatalIfErr(privKeyFile.Close(), "close PGP private key")
-			}()
-			console.FatalIfErr(pgpStore.LoadPrivateKey(privKeyFile, passwd), "read PGP private key")
+			pgpStore := pgp.New()
+			console.FatalIfErr(pgpStore.SetKeyFromFile(privKeyFile, passwd), "read PGP private key")
 
 			/**
 			Validate dirs
@@ -74,7 +69,7 @@ func GenerateRelease() console.CommandGetter {
 
 			pkgs := make([]*packages.PackegesModel, 0, 1000)
 			pathcomp := fmt.Sprintf(PathComponent, path, comp)
-			err = filepath.Walk(pathcomp, func(filename string, info fs.FileInfo, err error) error {
+			err := filepath.Walk(pathcomp, func(filename string, info fs.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -198,12 +193,12 @@ func GenerateRelease() console.CommandGetter {
 				SHA256:        "",
 			}
 
-			for _, inr := range inRelease {
-				inrHash, err1 := hash.CalcMultiHash(inr)
-				console.FatalIfErr(err1, "calc multi hash: %s", inr)
-				shortName := strings.Replace(inr, fmt.Sprintf(PathDistribution, path, dist), "", 1)
-				stats, err3 := os.Stat(inr)
-				console.FatalIfErr(err3, "file stat: %s", inr)
+			for _, fileName := range inRelease {
+				inrHash, err1 := hash.CalcMultiHash(fileName)
+				console.FatalIfErr(err1, "calc multi hash: %s", fileName)
+				shortName := strings.Replace(fileName, fmt.Sprintf(PathDistribution, path, dist), "", 1)
+				stats, err3 := os.Stat(fileName)
+				console.FatalIfErr(err3, "file stat: %s", fileName)
 
 				inReleaseModel.MD5Sum += fmt.Sprintf("\n %s %d %s", inrHash.MD5, stats.Size(), shortName)
 				inReleaseModel.SHA1 += fmt.Sprintf("\n %s %d %s", inrHash.SHA1, stats.Size(), shortName)
@@ -225,12 +220,12 @@ func GenerateRelease() console.CommandGetter {
 			Copy Release.gpg
 			*/
 
-			pubKeyB64, err := pgpStore.GetPublicBase64()
+			pubKeyB64, err := pgpStore.PublicKeyBase64()
 			console.FatalIfErr(err, "read public key")
 			err = os.WriteFile(fmt.Sprintf(PathDistribution, path, dist)+"Release.gpg", pubKeyB64, 0755)
 			console.FatalIfErr(err, "write Release.gpg")
 
-			pubKey, err := pgpStore.GetPublic()
+			pubKey, err := pgpStore.PublicKey()
 			console.FatalIfErr(err, "read public key")
 			err = os.WriteFile(path+"/key.gpg", pubKey, 0755)
 			console.FatalIfErr(err, "write key.gpg")
@@ -241,7 +236,7 @@ func GenerateRelease() console.CommandGetter {
 curl -fsSL https://[yourdomain]/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/[yourdomain].gpg
 sudo chmod a+r /etc/apt/keyrings/[yourdomain].gpg
 sudo tee /etc/apt/sources.list.d/[yourdomain].list <<'EOF'
-deb [arch=arm64 signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ stable main
+deb [arch=amd64 signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ stable main
 EOF
 sudo apt update
 

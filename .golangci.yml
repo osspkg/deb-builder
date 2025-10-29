@@ -1,202 +1,64 @@
+version: "2"
 
 run:
-  go: "1.23"
-  concurrency: 4
+  go: "1.25"
   timeout: 5m
   tests: false
   issues-exit-code: 1
   modules-download-mode: readonly
+  allow-parallel-runners: true
 
 issues:
-  exclude-use-default: false
-  max-issues-per-linter: 100
-  max-same-issues: 4
+  max-issues-per-linter: 0
+  max-same-issues: 0
   new: false
-  exclude-files:
-    - ".+_test.go"
-  exclude-dirs:
-    - "vendor$"
+  fix: false
 
 output:
   formats:
-    - format: line-number
-  sort-results: true
+    text:
+      print-linter-name: true
+      print-issued-lines: true
 
-linters-settings:
-  govet:
-    check-shadowing: true
-    enable:
-      - asmdecl
-      - assign
-      - atomic
-      - atomicalign
-      - bools
-      - buildtag
-      - cgocall
-      - composites
-      - copylocks
-      - deepequalerrors
-      - errorsas
-      - findcall
-      - framepointer
-      - httpresponse
-      - ifaceassert
-      - loopclosure
-      - lostcancel
-      - nilfunc
-      - nilness
-      - printf
-      - reflectvaluecompare
-      - shadow
-      - shift
-      - sigchanyzer
-      - sortslice
-      - stdmethods
-      - stringintconv
-      - structtag
-      - testinggoroutine
-      - tests
-      - unmarshal
-      - unreachable
-      - unsafeptr
-      - unusedresult
-      - unusedwrite
-    disable:
-      - fieldalignment
-  gofmt:
-    simplify: true
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  gocyclo:
-    min-complexity: 30
-  misspell:
-    locale: US
-  prealloc:
-    simple: true
-    range-loops: true
-    for-loops: true
-  unparam:
-    check-exported: false
-  gci:
-    skip-generated: true
-    custom-order: false
-  gosec:
-    includes:
-      - G101 # Look for hard coded credentials
-      - G102 # Bind to all interfaces
-      - G103 # Audit the use of unsafe block
-      - G104 # Audit errors not checked
-      - G106 # Audit the use of ssh.InsecureIgnoreHostKey
-      - G107 # Url provided to HTTP request as taint input
-      - G108 # Profiling endpoint automatically exposed on /debug/pprof
-      - G109 # Potential Integer overflow made by strconv.Atoi result conversion to int16/32
-      - G110 # Potential DoS vulnerability via decompression bomb
-      - G111 # Potential directory traversal
-      - G112 # Potential slowloris attack
-      - G113 # Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)
-      - G114 # Use of net/http serve function that has no support for setting timeouts
-      - G201 # SQL query construction using format string
-      - G202 # SQL query construction using string concatenation
-      - G203 # Use of unescaped data in HTML templates
-      - G204 # Audit use of command execution
-      - G301 # Poor file permissions used when creating a directory
-      - G302 # Poor file permissions used with chmod
-      - G303 # Creating tempfile using a predictable path
-      - G304 # File path provided as taint input
-      - G305 # File traversal when extracting zip/tar archive
-      - G306 # Poor file permissions used when writing to a new file
-      - G307 # Deferring a method which returns an error
-      - G401 # Detect the usage of DES, RC4, MD5 or SHA1
-      - G402 # Look for bad TLS connection settings
-      - G403 # Ensure minimum RSA key length of 2048 bits
-      - G404 # Insecure random number source (rand)
-      - G501 # Import blocklist: crypto/md5
-      - G502 # Import blocklist: crypto/des
-      - G503 # Import blocklist: crypto/rc4
-      - G504 # Import blocklist: net/http/cgi
-      - G505 # Import blocklist: crypto/sha1
-      - G601 # Implicit memory aliasing of items from a range statement
-    excludes:
-      - G101 # Look for hard coded credentials
-      - G102 # Bind to all interfaces
-      - G103 # Audit the use of unsafe block
-      - G104 # Audit errors not checked
-      - G106 # Audit the use of ssh.InsecureIgnoreHostKey
-      - G107 # Url provided to HTTP request as taint input
-      - G108 # Profiling endpoint automatically exposed on /debug/pprof
-      - G109 # Potential Integer overflow made by strconv.Atoi result conversion to int16/32
-      - G110 # Potential DoS vulnerability via decompression bomb
-      - G111 # Potential directory traversal
-      - G112 # Potential slowloris attack
-      - G113 # Usage of Rat.SetString in math/big with an overflow (CVE-2022-23772)
-      - G114 # Use of net/http serve function that has no support for setting timeouts
-      - G201 # SQL query construction using format string
-      - G202 # SQL query construction using string concatenation
-      - G203 # Use of unescaped data in HTML templates
-      - G204 # Audit use of command execution
-      - G301 # Poor file permissions used when creating a directory
-      - G302 # Poor file permissions used with chmod
-      - G303 # Creating tempfile using a predictable path
-      - G304 # File path provided as taint input
-      - G305 # File traversal when extracting zip/tar archive
-      - G306 # Poor file permissions used when writing to a new file
-      - G307 # Deferring a method which returns an error
-      - G401 # Detect the usage of DES, RC4, MD5 or SHA1
-      - G402 # Look for bad TLS connection settings
-      - G403 # Ensure minimum RSA key length of 2048 bits
-      - G404 # Insecure random number source (rand)
-      - G501 # Import blocklist: crypto/md5
-      - G502 # Import blocklist: crypto/des
-      - G503 # Import blocklist: crypto/rc4
-      - G504 # Import blocklist: net/http/cgi
-      - G505 # Import blocklist: crypto/sha1
-      - G601 # Implicit memory aliasing of items from a range statement
-    exclude-generated: true
-    severity: medium
-    confidence: medium
-    concurrency: 12
-    config:
-      global:
-        nosec: true
-        "#nosec": "#my-custom-nosec"
-        show-ignored: true
-        audit: true
-      G101:
-        pattern: "(?i)passwd|pass|password|pwd|secret|token|pw|apiKey|bearer|cred"
-        ignore_entropy: false
-        entropy_threshold: "80.0"
-        per_char_threshold: "3.0"
-        truncate: "32"
-      G104:
-        fmt:
-          - Fscanf
-      G111:
-        pattern: "http\\.Dir\\(\"\\/\"\\)|http\\.Dir\\('\\/'\\)"
-      G301: "0750"
-      G302: "0600"
-      G306: "0600"
-
-  lll:
-    line-length: 130
-    tab-width: 1
-  staticcheck:
-    go: "1.15"
-    # SAxxxx checks in https://staticcheck.io/docs/configuration/options/#checks
-    # Default: ["*"]
-    checks: [ "*", "-SA1019" ]
+formatters:
+  exclusions:
+    paths:
+      - vendors/
+  enable:
+    - gofmt
+    - goimports
 
 linters:
-  disable-all: true
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - -S1023
+        - -ST1000
+        - -ST1003
+        - -ST1020
+    gosec:
+      excludes:
+        - G104
+        - G115
+        - G204
+        - G301
+        - G302
+        - G304
+        - G306
+        - G401
+        - G501
+        - G505
+  exclusions:
+    paths:
+      - vendors/
+  default: none
   enable:
     - govet
-    - gofmt
     - errcheck
     - misspell
     - gocyclo
     - ineffassign
-    - goimports
-    - nakedret
     - unparam
     - unused
     - prealloc
@@ -207,5 +69,3 @@ linters:
     - errorlint
     - bodyclose
     - gosec
-    - lll
-  fast: false
