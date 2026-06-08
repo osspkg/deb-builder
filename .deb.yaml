@@ -7,7 +7,7 @@ packages:
       - amd64
       - arm64
     maintainer: The OSSPkg Team <github@osspkg.com>
-    homepage: https://deb.osspkg.com/
+    homepage: https://dl.osspkg.com/
     description:
       - Debian package builder
     section: web
