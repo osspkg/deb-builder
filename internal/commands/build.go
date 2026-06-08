@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021-2025 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Copyright (c) 2021-2026 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
  *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
  */
 
@@ -7,7 +7,6 @@ package commands
 
 import (
 	"fmt"
-	iofs "io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,6 +34,8 @@ func Build() console.CommandGetter {
 			flag.Bool("no-revision", "Don`t build revision deb package")
 		})
 		setter.ExecFunc(func(_ []string, debConf, baseDir, tmpDir string, noRevision bool) {
+			curr := fs.CurrentDir()
+
 			configs, err := config.Detect(debConf)
 			console.FatalIfErr(err, "deb config not found")
 
@@ -48,6 +49,11 @@ func Build() console.CommandGetter {
 				console.FatalIfErr(os.MkdirAll(storeDir, 0755), "creating storage directory")
 
 				exec.Build(conf.Control.Build, conf.Version, conf.Architecture, func(arch string, replacer exec.Replacer) {
+					defer func() {
+						if r := recover(); r != nil {
+							console.Fatalf("build failed: %v", r)
+						}
+					}()
 
 					// check file version
 
@@ -71,92 +77,69 @@ func Build() console.CommandGetter {
 							err1 error
 						)
 
-						switch true {
-						case strings.HasPrefix(src, "+"):
-							f, h, err1 = tg.WriteData(dst, []byte(src)[1:])
+						if prefix, ok := utils.MultiPrefix(src, "+", "c:"); ok {
+
+							f, h, err1 = tg.WriteData(dst, []byte(utils.MustValueAfterPrefix(src, prefix)))
 							console.FatalIfErr(err1, "write %s to data.tar.gz", src)
+
 							md5sum.Add(f, h)
 							console.Infof("Add: %s", dst)
 
-						case strings.HasPrefix(src, "c:"):
-							f, h, err1 = tg.WriteData(dst, []byte(src)[2:])
-							console.FatalIfErr(err1, "write %s to data.tar.gz", src)
-							md5sum.Add(f, h)
-							console.Infof("Add: %s", dst)
+						} else if prefix, ok := utils.MultiPrefix(src, "~", "d:"); ok {
 
-						case strings.HasPrefix(src, "~"):
-							fullpath, err0 := filepath.Abs(src[1:])
-							console.FatalIfErr(err0, "get full path for %s", src[1:])
+							srcPath := utils.MustValueAfterPrefix(src, prefix)
+							fullpath, err0 := filepath.Abs(srcPath)
+							console.FatalIfErr(err0, "get full path for %s", srcPath)
 
-							err2 := filepath.Walk(fullpath, func(path string, info iofs.FileInfo, e error) error {
-								if e != nil {
-									return e
-								}
-								if info.IsDir() {
-									return nil
-								}
+							if !strings.HasPrefix(fullpath, curr) {
+								console.Fatalf("full path for %s is incorrect", srcPath)
+							}
+
+							err2 := utils.DirWalk(fullpath, func(path string) error {
 								walkedFile := strings.ReplaceAll(path, fullpath, dst)
+
 								ff, hh, ee := tg.WriteFile(path, walkedFile)
 								console.FatalIfErr(ee, "write %s to data.tar.gz", src)
+
 								md5sum.Add(ff, hh)
 								console.Infof("Add: %s", walkedFile)
+
 								return nil
-							})
+							}, conf.Ignore...)
 							console.FatalIfErr(err2, "write %s to data.tar.gz", src)
 
-						case strings.HasPrefix(src, "d:"):
-							fullpath, err0 := filepath.Abs(src[2:])
-							console.FatalIfErr(err0, "get full path for %s", src[2:])
+						} else if _, ok := utils.MultiPrefix(src, "e:"); ok {
 
-							err2 := filepath.Walk(fullpath, func(path string, info iofs.FileInfo, e error) error {
-								if e != nil {
-									return e
-								}
-								if info.IsDir() {
-									return nil
-								}
-								walkedFile := strings.ReplaceAll(path, fullpath, dst)
-								ff, hh, ee := tg.WriteFile(path, walkedFile)
-								console.FatalIfErr(ee, "write %s to data.tar.gz", src)
-								md5sum.Add(ff, hh)
-								console.Infof("Add: %s", walkedFile)
-								return nil
-							})
-							console.FatalIfErr(err2, "write %s to data.tar.gz", src)
-
-						case strings.HasPrefix(src, "e:"):
 							rex, err0 := regexp.Compile(`(?Us)^` + src[2:] + `$`)
 							console.FatalIfErr(err0, "build regexp `%s`", src[2:])
 
-							fullpath := fs.CurrentDir()
-							err2 := filepath.Walk(fullpath, func(path string, info iofs.FileInfo, e error) error {
-								if e != nil {
-									return e
-								}
-								if info.IsDir() {
+							err2 := utils.DirWalk(curr, func(path string) error {
+								if !rex.MatchString(strings.TrimPrefix(path, curr)) {
 									return nil
 								}
 
-								if !rex.MatchString(strings.TrimPrefix(path, fullpath)) {
-									return nil
-								}
-
-								walkedFile := strings.ReplaceAll(path, fullpath, dst)
+								walkedFile := strings.ReplaceAll(path, curr, dst)
 								ff, hh, ee := tg.WriteFile(path, walkedFile)
 								console.FatalIfErr(ee, "write %s to data.tar.gz", src)
+
 								md5sum.Add(ff, hh)
 								console.Infof("Add: %s", walkedFile)
+
 								return nil
-							})
+							}, conf.Ignore...)
 							console.FatalIfErr(err2, "write %s to data.tar.gz", src)
 
-						default:
+						} else {
+
 							f, h, err1 = tg.WriteFile(src, dst)
 							console.FatalIfErr(err1, "write %s to data.tar.gz", src)
+
 							md5sum.Add(f, h)
 							console.Infof("Add: %s", dst)
+
 						}
 					}
+
 					console.FatalIfErr(tg.Close(), "close data.tar.gz")
 
 					md5file, err := md5sum.Save(buildDir)
@@ -204,6 +187,7 @@ func Build() console.CommandGetter {
 					console.FatalIfErr(deb.Close(), "close file %s", debFile)
 
 					console.Infof("Result: %s", debFile)
+
 				})
 
 			}

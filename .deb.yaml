@@ -16,3 +16,5 @@ packages:
       build: goppy build --arch=%arch%
     data:
       usr/bin/deb-builder: build/deb-builder_%arch%
+    ignore:
+      - .git/

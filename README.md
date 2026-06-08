@@ -52,6 +52,9 @@ data: # A list of files that will be packaged during the build, where the file i
   demo/file: 'c:write file content' 
   demo/dir: 'd:/build' 
   demo/dir1: 'e:/build/.*.(go|js)' 
+ignore:
+  - .git/
+  - .gitignore
 ```
 
 data prefix:
