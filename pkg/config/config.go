@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2021-2025 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
+ *  Copyright (c) 2021-2026 Mikhail Knyazhev <markus621@gmail.com>. All rights reserved.
  *  Use of this source code is governed by a BSD-3-Clause license that can be found in the LICENSE file.
  */
 
@@ -41,6 +41,7 @@ type (
 		Priority     string            `yaml:"priority"`
 		Control      Control           `yaml:"control"`
 		Data         map[string]string `yaml:"data"`
+		Ignore       []string          `yaml:"ignore"`
 	}
 	Control struct {
 		Depends     []string `yaml:"depends"`
@@ -124,6 +125,10 @@ func Create() error {
 			"bin/" + filepath.Base(dir):                  "build/bin/" + filepath.Base(dir) + "_%arch%",
 			"etc/" + filepath.Base(dir) + "/config.yaml": "configs/config.yaml",
 			"var/log/" + filepath.Base(dir) + ".log":     "+Write contents of file here after '+'",
+		},
+		Ignore: []string{
+			".git/",
+			".gitignore",
 		},
 	}
 

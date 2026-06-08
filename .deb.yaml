@@ -7,7 +7,7 @@ packages:
       - amd64
       - arm64
     maintainer: The OSSPkg Team <github@osspkg.com>
-    homepage: https://deb.osspkg.com/
+    homepage: https://dl.osspkg.com/
     description:
       - Debian package builder
     section: web
@@ -16,3 +16,5 @@ packages:
       build: goppy build --arch=%arch%
     data:
       usr/bin/deb-builder: build/deb-builder_%arch%
+    ignore:
+      - .git/
