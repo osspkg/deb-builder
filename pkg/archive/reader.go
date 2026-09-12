@@ -33,6 +33,9 @@ func NewReader(filename string) (*TGZReader, error) {
 	}
 	gw, err := gzip.NewReader(file)
 	if err != nil {
+		if closeErr := file.Close(); closeErr != nil {
+			return nil, errors.Join(err, fmt.Errorf("close archive: %w", closeErr))
+		}
 		return nil, err
 	}
 	tw := tar.NewReader(gw)
@@ -40,13 +43,9 @@ func NewReader(filename string) (*TGZReader, error) {
 }
 
 func (v *TGZReader) Close() error {
-	if err := v.gz.Close(); err != nil {
-		return err
-	}
-	if err := v.fd.Close(); err != nil {
-		return err
-	}
-	return nil
+	gzipErr := v.gz.Close()
+	fileErr := v.fd.Close()
+	return errors.Join(gzipErr, fileErr)
 }
 
 func (v *TGZReader) Reset() error {

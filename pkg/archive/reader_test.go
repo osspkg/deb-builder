@@ -36,6 +36,30 @@ func TestReaderRejectsOversizedEntry(t *testing.T) {
 	require.Nil(t, got)
 }
 
+func TestNewReaderClosesFileOnInvalidGzip(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "invalid.gz")
+	require.NoError(t, os.WriteFile(filename, []byte("not a gzip stream"), 0600))
+
+	before := openFileDescriptorCount(t)
+	for range 32 {
+		reader, err := archive.NewReader(filename)
+		require.Error(t, err)
+		require.Nil(t, reader)
+	}
+	after := openFileDescriptorCount(t)
+	require.LessOrEqual(t, after, before+1)
+}
+
+func openFileDescriptorCount(t *testing.T) int {
+	t.Helper()
+
+	entries, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		t.Skipf("/proc/self/fd is unavailable: %v", err)
+	}
+	return len(entries)
+}
+
 func openTestReader(t *testing.T, name string, data []byte) *archive.TGZReader {
 	t.Helper()
 
