@@ -17,12 +17,12 @@ import (
 
 	"go.osspkg.com/archives/ar"
 	"go.osspkg.com/console"
-	"go.osspkg.com/encrypt/pgp"
 
 	"github.com/osspkg/pkg-build/pkg/archive"
 	"github.com/osspkg/pkg-build/pkg/buffer"
 	"github.com/osspkg/pkg-build/pkg/hash"
 	"github.com/osspkg/pkg-build/pkg/packages"
+	"github.com/osspkg/pkg-build/pkg/pgp"
 	"github.com/osspkg/pkg-build/pkg/utils"
 )
 
@@ -220,8 +220,7 @@ func GenerateRelease() console.CommandGetter {
 			Detached Release signature
 			*/
 
-			releaseFile := fmt.Sprintf(PathDistribution, path, dist) + "Release"
-			releaseSignature, err := signDetachedRelease(releaseFile, privKeyFile, passwd)
+			releaseSignature, err := signDetachedRelease(inReleaseInfo, pgpStore)
 			console.FatalIfErr(err, "sign Release.gpg")
 			err = os.WriteFile(fmt.Sprintf(PathDistribution, path, dist)+"Release.gpg", releaseSignature, 0644)
 			console.FatalIfErr(err, "write Release.gpg")

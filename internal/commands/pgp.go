@@ -9,8 +9,9 @@ import (
 	"os"
 
 	"go.osspkg.com/console"
-	"go.osspkg.com/encrypt/pgp"
 	"go.osspkg.com/ioutils/fs"
+
+	"github.com/osspkg/pkg-build/pkg/pgp"
 )
 
 const (

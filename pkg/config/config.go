@@ -15,7 +15,7 @@ import (
 	"unicode"
 
 	"go.osspkg.com/ioutils/fs"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/osspkg/pkg-build/pkg/exec"
 	"github.com/osspkg/pkg-build/pkg/utils"

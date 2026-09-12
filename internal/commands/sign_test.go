@@ -6,13 +6,15 @@
 package commands
 
 import (
-	"crypto"
+	"bytes"
+	"fmt"
 	"os"
 	osexec "os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"go.osspkg.com/encrypt/pgp"
+	"github.com/osspkg/pkg-build/pkg/pgp"
 )
 
 func TestSignDetachedReleaseWithGPG(t *testing.T) {
@@ -21,7 +23,7 @@ func TestSignDetachedReleaseWithGPG(t *testing.T) {
 		t.Fatalf("gpg is required for detached release signature verification: %v", err)
 	}
 
-	cert, err := pgp.NewCert(pgp.Config{Name: "pkg-build test", Email: "pkg-build@example.com"}, crypto.SHA256, 2048)
+	cert, err := pgp.NewCertSHA512(pgp.Config{Name: "pkg-build test", Email: "pkg-build@example.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,17 +34,44 @@ func TestSignDetachedReleaseWithGPG(t *testing.T) {
 	if err := os.WriteFile(privateKeyFile, cert.Private, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(publicKeyFile, cert.Public, 0644); err != nil {
+	publicKeyStore := pgp.New()
+	if err := publicKeyStore.SetKey(cert.Private, ""); err != nil {
 		t.Fatal(err)
 	}
-
-	releaseFile := filepath.Join(t.TempDir(), "Release")
+	publicKey, err := publicKeyStore.PublicKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(publicKeyFile, publicKey, 0644); err != nil {
+		t.Fatal(err)
+	}
 	releaseData := []byte("Origin: pkg-build\nSHA256:\n test 4 Packages\n")
+	releaseFile := filepath.Join(t.TempDir(), "Release")
 	if err := os.WriteFile(releaseFile, releaseData, 0644); err != nil {
 		t.Fatal(err)
 	}
+	verifyHome := filepath.Join(t.TempDir(), "gnupg")
+	if err := os.Mkdir(verifyHome, 0700); err != nil {
+		t.Fatal(err)
+	}
 
-	signature, err := signDetachedRelease(releaseFile, privateKeyFile, "")
+	signer := pgp.New()
+	if err := signer.SetKeyFromFile(privateKeyFile, ""); err != nil {
+		t.Fatal(err)
+	}
+	var cleartext bytes.Buffer
+	if err := signer.Sign(bytes.NewReader(releaseData), &cleartext); err != nil {
+		t.Fatal(err)
+	}
+	cleartextFile := filepath.Join(filepath.Dir(releaseFile), "InRelease")
+	if err := os.WriteFile(cleartextFile, cleartext.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runGPG(gpgPath, verifyHome, "--no-default-keyring", "--keyring", publicKeyFile, "--verify", cleartextFile); err != nil {
+		t.Fatalf("verify cleartext signature: %v", err)
+	}
+
+	signature, err := signDetachedRelease(releaseData, signer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,21 +80,42 @@ func TestSignDetachedReleaseWithGPG(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	verifyHome := filepath.Join(t.TempDir(), "gnupg")
-	if err := os.Mkdir(verifyHome, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := runGPG(gpgPath, []string{"--no-options", "--batch", "--homedir", verifyHome, "--import", publicKeyFile}, nil); err != nil {
-		t.Fatalf("import public key: %v", err)
-	}
-	if err := runGPG(gpgPath, []string{"--no-options", "--batch", "--homedir", verifyHome, "--verify", signatureFile, releaseFile}, nil); err != nil {
+	if err := runGPG(gpgPath, verifyHome, "--no-default-keyring", "--keyring", publicKeyFile, "--verify", signatureFile, releaseFile); err != nil {
 		t.Fatalf("verify detached signature: %v", err)
 	}
 
 	if err := os.WriteFile(releaseFile, append(releaseData, []byte("tampered\n")...), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runGPG(gpgPath, []string{"--no-options", "--batch", "--homedir", verifyHome, "--verify", signatureFile, releaseFile}, nil); err == nil {
+	if err := runGPG(gpgPath, verifyHome, "--no-default-keyring", "--keyring", publicKeyFile, "--verify", signatureFile, releaseFile); err == nil {
 		t.Fatal("tampered Release unexpectedly passed signature verification")
 	}
+}
+
+func runGPG(gpgPath, home string, args ...string) error {
+	commandArgs := []string{"--no-options", "--batch", "--homedir", home}
+	commandArgs = append(commandArgs, args...)
+	cmd := osexec.Command(gpgPath, commandArgs...)
+	cmd.Env = gpgTestEnvironment(home)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		message := strings.TrimSpace(string(output))
+		if message != "" {
+			return fmt.Errorf("%w: %s", err, message)
+		}
+		return err
+	}
+	return nil
+}
+
+func gpgTestEnvironment(home string) []string {
+	base := os.Environ()
+	env := make([]string, 0, len(base)+1)
+	for _, value := range base {
+		if strings.HasPrefix(value, "GPG_AGENT_INFO=") || strings.HasPrefix(value, "GNUPGHOME=") {
+			continue
+		}
+		env = append(env, value)
+	}
+	return append(env, "GNUPGHOME="+home)
 }
