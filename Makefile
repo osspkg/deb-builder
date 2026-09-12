@@ -20,7 +20,7 @@ build:
 tests:
 	goppy test
 
-.PHONY: pre-commite
+.PHONY: pre-commit
 pre-commit: license setup lint build tests
 
 .PHONY: ci
