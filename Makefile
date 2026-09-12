@@ -2,9 +2,6 @@
 .PHONY: install
 install:
 	go install go.osspkg.com/goppy/v2/cmd/goppy@latest
-
-.PHONY: setup
-setup:
 	goppy setup-lib
 
 .PHONY: lint
