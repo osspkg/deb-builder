@@ -8,9 +8,17 @@ package archive
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 )
+
+// MaxEntrySize is the maximum decompressed size returned by Read.
+const MaxEntrySize int64 = 10 << 20
+
+// ErrEntryTooLarge reports that an archive entry exceeds MaxEntrySize.
+var ErrEntryTooLarge = errors.New("archive entry exceeds maximum size")
 
 type TGZReader struct {
 	fd  *os.File
@@ -52,7 +60,14 @@ func (v *TGZReader) Read(filename string) ([]byte, error) {
 			return nil, err
 		}
 		if hdr.Name == filename {
-			return io.ReadAll(v.tar)
+			data, err := io.ReadAll(io.LimitReader(v.tar, MaxEntrySize+1))
+			if err != nil {
+				return nil, err
+			}
+			if int64(len(data)) > MaxEntrySize {
+				return nil, fmt.Errorf("%w: %q is larger than %d bytes", ErrEntryTooLarge, filename, MaxEntrySize)
+			}
+			return data, nil
 		}
 	}
 }
