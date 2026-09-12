@@ -6,9 +6,7 @@
 package commands
 
 import (
-	"fmt"
 	iofs "io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -22,6 +20,7 @@ import (
 	"github.com/osspkg/pkg-build/pkg/control"
 	"github.com/osspkg/pkg-build/pkg/exec"
 	"github.com/osspkg/pkg-build/pkg/packages"
+	"github.com/osspkg/pkg-build/pkg/paths"
 	"github.com/osspkg/pkg-build/pkg/utils"
 )
 
@@ -38,20 +37,38 @@ func Build() console.CommandGetter {
 			configs, err := config.Detect(debConf)
 			console.FatalIfErr(err, "deb config not found")
 
+			storageRoot, err := paths.OpenPathRoot(baseDir)
+			console.FatalIfErr(err, "open storage root")
+			buildRoot, err := paths.OpenPathRoot(tmpDir)
+			console.FatalIfErr(err, "open build root")
+			defer func() {
+				if err := buildRoot.Close(); err != nil {
+					console.Errorf("close build root: %v", err)
+				}
+				if err := storageRoot.Close(); err != nil {
+					console.Errorf("close storage root: %v", err)
+				}
+			}()
+
 			for _, conf := range configs {
+				ownedDir, err := paths.NewOwnedBuildDir(buildRoot, conf.Package, conf.Version)
+				console.FatalIfErr(err, "creating build directory")
+				buildDir := ownedDir.Path()
 
-				buildDir := fmt.Sprintf("%s/%s_%s", tmpDir, conf.Package, conf.Version)
-				console.FatalIfErr(os.RemoveAll(buildDir), "clearing build directory")
-				console.FatalIfErr(os.MkdirAll(buildDir, 0755), "creating build directory")
-
-				storeDir := fmt.Sprintf("%s/%s/%s", baseDir, conf.Package[0:1], conf.Package)
-				console.FatalIfErr(os.MkdirAll(storeDir, 0755), "creating storage directory")
+				storeRel := filepath.Join(conf.Package[:1], conf.Package)
+				console.FatalIfErr(paths.ValidateRootRelativePath(storeRel), "validate storage path")
+				console.FatalIfErr(storageRoot.MkdirAll(storeRel, 0755), "creating storage directory")
+				storeDir := filepath.Join(storageRoot.Name(), storeRel)
 
 				exec.Build(conf.Control.Build, conf.Version, conf.Architecture, func(arch string, replacer exec.Replacer) {
 
 					// check file version
 
 					debFile, revision, carch := packages.BuildName(storeDir, conf.Package, conf.Version, arch, noRevision)
+					packageFile, err := paths.DirectChildPath(storeDir, debFile)
+					console.FatalIfErr(err, "validate package output")
+					packageRel := filepath.Join(storeRel, packageFile)
+					console.FatalIfErr(paths.ValidateRootRelativePath(packageRel), "validate package output")
 
 					// package
 
@@ -193,7 +210,9 @@ func Build() console.CommandGetter {
 					// build deb
 
 					if noRevision {
-						console.FatalIfErr(os.RemoveAll(debFile), "remove old %s", debFile)
+						console.FatalIfErr(paths.RemovePackageFile(storageRoot, packageRel), "remove old %s", debFile)
+					} else {
+						console.FatalIfErr(paths.EnsurePackageOutputAbsent(storageRoot, packageRel), "reserve package output %s", debFile)
 					}
 
 					deb, err := ar.Open(debFile, 0644)
@@ -205,6 +224,7 @@ func Build() console.CommandGetter {
 
 					console.Infof("Result: %s", debFile)
 				})
+				console.FatalIfErr(ownedDir.Remove(), "remove temporary build directory")
 
 			}
 		})

@@ -6,10 +6,13 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"unicode"
 
 	"go.osspkg.com/ioutils/fs"
 	"gopkg.in/yaml.v3"
@@ -53,7 +56,47 @@ type (
 	}
 )
 
-var versionRegexp = regexp.MustCompile(`\d+:\d+\.\d+\.\d+`)
+var (
+	versionRegexp      = regexp.MustCompile(`\d+:\d+\.\d+\.\d+`)
+	packageNameRegexp  = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]{0,99}$`)
+	architectureRegexp = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+)
+
+// Validate checks values that become filesystem path components during a
+// build. Debian metadata validation remains separate, but these fields must
+// be safe before they are used to derive temporary and storage paths.
+func Validate(cfg Config) error {
+	if !packageNameRegexp.MatchString(cfg.Package) {
+		return fmt.Errorf("invalid package name %q", cfg.Package)
+	}
+	if err := validatePathComponent("version", cfg.Version); err != nil {
+		return err
+	}
+	if len(cfg.Architecture) == 0 {
+		return errors.New("architecture must not be empty")
+	}
+	for _, arch := range cfg.Architecture {
+		if !architectureRegexp.MatchString(arch) {
+			return fmt.Errorf("invalid architecture %q", arch)
+		}
+	}
+	return nil
+}
+
+func validatePathComponent(field, value string) error {
+	if value == "" || value == "." || value == ".." {
+		return fmt.Errorf("%s must be a non-empty path component", field)
+	}
+	if strings.ContainsAny(value, `/\\`) {
+		return fmt.Errorf("%s %q must not contain a path separator", field, value)
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return fmt.Errorf("%s must not contain control characters", field)
+		}
+	}
+	return nil
+}
 
 func Detect(name string) ([]Config, error) {
 	dir := fs.CurrentDir()
@@ -93,6 +136,9 @@ func Detect(name string) ([]Config, error) {
 			}
 		} else if !versionRegexp.MatchString(out[i].Version) {
 			return nil, fmt.Errorf("invalid version format, want format 0:0.0.0")
+		}
+		if err = Validate(out[i]); err != nil {
+			return nil, fmt.Errorf("invalid package config %d: %w", i, err)
 		}
 	}
 
