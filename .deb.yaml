@@ -2,15 +2,15 @@ ver: "2"
 packages:
   - package: pkg-build
     source: pkg-build
-    version: 'git'
+    version: "git"
     architecture:
       - amd64
       - arm64
     maintainer: The OSSPkg Team <github@osspkg.com>
-    homepage: https://deb.osspkg.com/
+    homepage: https://pkg-build.osspkg.com/
     description:
-      - Debian package builder
-    section: web
+      - deb && rpm package builder
+    section: utils
     priority: optional
     control:
       build: goppy build --arch=%arch%
