@@ -98,6 +98,13 @@ DEB_RELEASE_LABEL='Company Info' \
 pkg-build release
 ```
 
+Verify the detached repository signature after importing the repository public key:
+
+```bash
+gpg --verify /path_to_deb_release_directory/dists/stable/Release.gpg \
+  /path_to_deb_release_directory/dists/stable/Release
+```
+
 Add to apt [amd64]
 
 ```bash
@@ -141,4 +148,3 @@ Building a project
 ```bash
 GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc go build -a
 ```
-

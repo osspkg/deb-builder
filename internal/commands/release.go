@@ -217,12 +217,13 @@ func GenerateRelease() console.CommandGetter {
 			console.FatalIfErr(err, "write InRelease")
 
 			/**
-			Copy Release.gpg
+			Detached Release signature
 			*/
 
-			pubKeyB64, err := pgpStore.PublicKeyBase64()
-			console.FatalIfErr(err, "read public key")
-			err = os.WriteFile(fmt.Sprintf(PathDistribution, path, dist)+"Release.gpg", pubKeyB64, 0755)
+			releaseFile := fmt.Sprintf(PathDistribution, path, dist) + "Release"
+			releaseSignature, err := signDetachedRelease(releaseFile, privKeyFile, passwd)
+			console.FatalIfErr(err, "sign Release.gpg")
+			err = os.WriteFile(fmt.Sprintf(PathDistribution, path, dist)+"Release.gpg", releaseSignature, 0644)
 			console.FatalIfErr(err, "write Release.gpg")
 
 			pubKey, err := pgpStore.PublicKey()
