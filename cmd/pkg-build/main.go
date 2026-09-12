@@ -8,11 +8,11 @@ package main
 import (
 	"go.osspkg.com/console"
 
-	"github.com/osspkg/deb-builder/internal/commands"
+	"github.com/osspkg/pkg-build/internal/commands"
 )
 
 func main() {
-	root := console.New("deb-builder", "help deb-builder")
+	root := console.New("pkg-build", "help pkg-build")
 
 	root.AddCommand(commands.CreateConfig())
 	root.AddCommand(commands.Build())

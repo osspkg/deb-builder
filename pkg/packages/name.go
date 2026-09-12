@@ -12,7 +12,7 @@ import (
 
 	"go.osspkg.com/ioutils/fs"
 
-	"github.com/osspkg/deb-builder/pkg/utils"
+	"github.com/osspkg/pkg-build/pkg/utils"
 )
 
 var pkgArchAlias = map[string]string{

@@ -17,7 +17,7 @@ import (
 	"go.osspkg.com/console"
 	"go.osspkg.com/ioutils/fs"
 
-	"github.com/osspkg/deb-builder/pkg/packages"
+	"github.com/osspkg/pkg-build/pkg/packages"
 )
 
 type Replacer interface {

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/osspkg/deb-builder/pkg/config"
+	"github.com/osspkg/pkg-build/pkg/config"
 )
 
 const descriptionMaxLen = 70

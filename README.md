@@ -1,20 +1,20 @@
 
-# deb-builder
+# pkg-build
 
-[![Release](https://img.shields.io/github/release/osspkg/deb-builder.svg?style=flat-square)](https://github.com/osspkg/deb-builder/releases/latest)
-[![Go Report Card](https://goreportcard.com/badge/github.com/osspkg/deb-builder)](https://goreportcard.com/report/github.com/osspkg/deb-builder)
-[![CI](https://github.com/osspkg/deb-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/osspkg/deb-builder/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/release/osspkg/pkg-build.svg?style=flat-square)](https://github.com/osspkg/pkg-build/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/osspkg/pkg-build)](https://goreportcard.com/report/github.com/osspkg/pkg-build)
+[![CI](https://github.com/osspkg/pkg-build/actions/workflows/ci.yml/badge.svg)](https://github.com/osspkg/pkg-build/actions/workflows/ci.yml)
 
 # install
 
 ```go
- go install github.com/osspkg/deb-builder/cmd/deb-builder@latest
+ go install github.com/osspkg/pkg-build/cmd/pkg-build@latest
 ```
 
 # create config file `.deb.yaml`
 
 ```shell
-deb-builder config
+pkg-build config
 ```
 
 example:
@@ -62,7 +62,7 @@ data prefix:
 # build deb package
 
 ```shell
-deb-builder build \
+pkg-build build \
   --base-dir=/path_to_deb_release_directory/pool/main \
   --tmp-dir=/path/to/build/directory
 ```
@@ -72,13 +72,13 @@ or use env
 ```shell
 DEB_STORAGE_BASE_DIR=/path_to_deb_release_directory/pool/main \
 DEB_BUILD_DIR=/path/to/build/directory \
-deb-builder build
+pkg-build build
 ```
 
 # build release repos
 
 ```shell
-deb-builder release \
+pkg-build release \
   --release-dir=/path_to_deb_release_directory \
   --private-key=/path_to_pgp_key/private.pgp \
   --passwd='' \
@@ -95,7 +95,7 @@ DEB_PGP_KEY=/path_to_pgp_key/private.pgp \
 DEB_PGP_KEY_PASSWD='' \
 DEB_RELEASE_ORIGIN='Company Name' \
 DEB_RELEASE_LABEL='Company Info' \
-deb-builder release
+pkg-build release
 ```
 
 Add to apt [amd64]
@@ -123,7 +123,7 @@ sudo apt update
 # build pgp key
 
 ```bash
-deb-builder pgp new --name='Company Name' --email='email@company' --comment='Comment about key' --path=/path_to_pgp_key
+pkg-build pgp new --name='Company Name' --email='email@company' --comment='Comment about key' --path=/path_to_pgp_key
 ```
 
 # Note

@@ -8,7 +8,7 @@ package commands
 import (
 	"go.osspkg.com/console"
 
-	"github.com/osspkg/deb-builder/pkg/config"
+	"github.com/osspkg/pkg-build/pkg/config"
 )
 
 func CreateConfig() console.CommandGetter {

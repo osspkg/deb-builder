@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/osspkg/deb-builder/pkg/archive"
+	"github.com/osspkg/pkg-build/pkg/archive"
 )
 
 func TestTarGZ(t *testing.T) {

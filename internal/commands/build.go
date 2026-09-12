@@ -17,12 +17,12 @@ import (
 	"go.osspkg.com/console"
 	"go.osspkg.com/ioutils/fs"
 
-	"github.com/osspkg/deb-builder/pkg/archive"
-	"github.com/osspkg/deb-builder/pkg/config"
-	"github.com/osspkg/deb-builder/pkg/control"
-	"github.com/osspkg/deb-builder/pkg/exec"
-	"github.com/osspkg/deb-builder/pkg/packages"
-	"github.com/osspkg/deb-builder/pkg/utils"
+	"github.com/osspkg/pkg-build/pkg/archive"
+	"github.com/osspkg/pkg-build/pkg/config"
+	"github.com/osspkg/pkg-build/pkg/control"
+	"github.com/osspkg/pkg-build/pkg/exec"
+	"github.com/osspkg/pkg-build/pkg/packages"
+	"github.com/osspkg/pkg-build/pkg/utils"
 )
 
 func Build() console.CommandGetter {

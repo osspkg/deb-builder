@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/osspkg/deb-builder/pkg/utils"
+	"github.com/osspkg/pkg-build/pkg/utils"
 )
 
 type TGZWriter struct {

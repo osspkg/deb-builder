@@ -14,8 +14,8 @@ import (
 	"go.osspkg.com/ioutils/fs"
 	"gopkg.in/yaml.v3"
 
-	"github.com/osspkg/deb-builder/pkg/exec"
-	"github.com/osspkg/deb-builder/pkg/utils"
+	"github.com/osspkg/pkg-build/pkg/exec"
+	"github.com/osspkg/pkg-build/pkg/utils"
 )
 
 const FileName = ".deb.yaml"

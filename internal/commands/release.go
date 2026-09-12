@@ -19,11 +19,11 @@ import (
 	"go.osspkg.com/console"
 	"go.osspkg.com/encrypt/pgp"
 
-	"github.com/osspkg/deb-builder/pkg/archive"
-	"github.com/osspkg/deb-builder/pkg/buffer"
-	"github.com/osspkg/deb-builder/pkg/hash"
-	"github.com/osspkg/deb-builder/pkg/packages"
-	"github.com/osspkg/deb-builder/pkg/utils"
+	"github.com/osspkg/pkg-build/pkg/archive"
+	"github.com/osspkg/pkg-build/pkg/buffer"
+	"github.com/osspkg/pkg-build/pkg/hash"
+	"github.com/osspkg/pkg-build/pkg/packages"
+	"github.com/osspkg/pkg-build/pkg/utils"
 )
 
 const (
