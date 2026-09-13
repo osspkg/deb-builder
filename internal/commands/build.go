@@ -223,7 +223,11 @@ func Build() console.CommandGetter {
 					tg, err = archive.NewWriter(controlFile)
 					console.FatalIfErr(err, "create control.tar.gz")
 					for _, file := range cpkg.List() {
-						if _, _, err1 := tg.WriteFile(file, filepath.Base(file)); err1 != nil {
+						destination := filepath.Base(file)
+						if file == ctrlFile {
+							destination = control.ControlFileName
+						}
+						if _, _, err1 := tg.WriteFile(file, destination); err1 != nil {
 							console.FatalIfErr(err1, "write %s to control.tar.gz", file)
 						}
 					}

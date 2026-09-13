@@ -50,10 +50,12 @@ func (v *ReleaseModel) Encode() ([]byte, error) {
 type InReleaseModel struct {
 	Origin        string `key:"Origin"`
 	Label         string `key:"Label"`
+	Suite         string `key:"Suite"`
 	Component     string `key:"Component"`
 	Codename      string `key:"Codename"`
 	Date          string `key:"Date"`
 	Architectures string `key:"Architectures"`
+	Components    string `key:"Components"`
 	Description   string `key:"Description"`
 	MD5Sum        string `key:"MD5Sum"`
 	SHA1          string `key:"SHA1"`

@@ -5,6 +5,8 @@
 
 package control
 
+const ControlFileName = "./control"
+
 type Pkg struct {
 	files []string
 }

@@ -7,10 +7,13 @@ package commands
 
 import (
 	"bytes"
+	"compress/gzip"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -20,6 +23,7 @@ import (
 
 	"github.com/osspkg/pkg-build/pkg/archive"
 	"github.com/osspkg/pkg-build/pkg/buffer"
+	"github.com/osspkg/pkg-build/pkg/control"
 	"github.com/osspkg/pkg-build/pkg/hash"
 	"github.com/osspkg/pkg-build/pkg/packages"
 	"github.com/osspkg/pkg-build/pkg/pgp"
@@ -32,7 +36,11 @@ const (
 	PathBinary       = "%s/dists/%s/%s/binary-%s/"
 )
 
-var archs = []string{"i386", "amd64", "arm", "arm64"}
+var (
+	defaultReleaseArchitectures = []string{"i386", "amd64", "arm", "arm64"}
+	releaseArchitectureRegexp   = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]*$`)
+	releasePathComponentRegexp  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9+._-]*$`)
+)
 
 func GenerateRelease() console.CommandGetter {
 	return console.NewCommand(func(setter console.CommandSetter) {
@@ -48,6 +56,9 @@ func GenerateRelease() console.CommandGetter {
 			f.StringVar("comp", utils.GetEnv("DEB_COMPONENT", "main"), "release component")
 		})
 		setter.ExecFunc(func(_ []string, path, tmp, privKeyFile, passwd, origin, label, dist, comp string) {
+			console.FatalIfErr(validateReleasePathComponent("distribution", dist), "validate distribution")
+			console.FatalIfErr(validateReleasePathComponent("component", comp), "validate component")
+
 			/**
 			LOAD PGP
 			*/
@@ -55,25 +66,19 @@ func GenerateRelease() console.CommandGetter {
 			console.FatalIfErr(pgpStore.SetKeyFromFile(privKeyFile, passwd), "read PGP private key")
 
 			/**
-			Validate dirs
-			*/
-
-			for _, arch := range archs {
-				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
-				console.FatalIfErr(os.MkdirAll(dir, 0755), "validate dirs")
-			}
-
-			/**
 			Packages
 			*/
 
 			pkgs := make([]*packages.PackegesModel, 0, 1000)
 			pathcomp := fmt.Sprintf(PathComponent, path, comp)
-			err := filepath.Walk(pathcomp, func(filename string, info fs.FileInfo, err error) error {
+			err := filepath.Walk(pathcomp, func(filename string, info fs.FileInfo, err error) (retErr error) {
 				if err != nil {
 					return err
 				}
-				if info.IsDir() && filepath.Ext(info.Name()) != "deb" {
+				if info.IsDir() {
+					return nil
+				}
+				if !info.Mode().IsRegular() || filepath.Ext(info.Name()) != ".deb" {
 					return nil
 				}
 				shortName := strings.Replace(filename, path+"/", "", 1)
@@ -83,7 +88,11 @@ func GenerateRelease() console.CommandGetter {
 				if err != nil {
 					return fmt.Errorf("open deb: %w", err)
 				}
-				defer arch.Close() //nolint:errcheck
+				defer func() {
+					if closeErr := arch.Close(); closeErr != nil {
+						retErr = errors.Join(retErr, fmt.Errorf("close deb: %w", closeErr))
+					}
+				}()
 				if err = arch.Export("control.tar.gz", tmp); err != nil {
 					return fmt.Errorf("export control.tar.gz: %w", err)
 				}
@@ -92,15 +101,22 @@ func GenerateRelease() console.CommandGetter {
 				if err != nil {
 					return fmt.Errorf("open control.tar.gz: %w", err)
 				}
-				defer tgz.Close() //nolint:errcheck
-				control, err := tgz.Read("./control")
+				defer func() {
+					if closeErr := tgz.Close(); closeErr != nil {
+						retErr = errors.Join(retErr, fmt.Errorf("close control.tar.gz: %w", closeErr))
+					}
+				}()
+				controlData, err := tgz.Read(control.ControlFileName)
 				if err != nil {
 					return fmt.Errorf("read control: %w", err)
 				}
 
 				pkgModel := &packages.PackegesModel{}
-				if err = pkgModel.Decode(control); err != nil {
+				if err = pkgModel.Decode(controlData); err != nil {
 					return fmt.Errorf("decode control: %w", err)
+				}
+				if pkgModel.Package == "" || pkgModel.Version == "" || pkgModel.Architecture == "" {
+					return fmt.Errorf("control is missing package, version, or architecture")
 				}
 				pkgModel.Filename = shortName
 				pkgModel.Size = info.Size()
@@ -120,6 +136,13 @@ func GenerateRelease() console.CommandGetter {
 			console.FatalIfErr(err, "list packages")
 
 			sortPackages(pkgs)
+			archs, err := releaseArchitectures(pkgs)
+			console.FatalIfErr(err, "detect package architectures")
+
+			for _, arch := range archs {
+				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
+				console.FatalIfErr(os.MkdirAll(dir, 0755), "validate dirs")
+			}
 
 			/**
 			Release
@@ -151,15 +174,18 @@ func GenerateRelease() console.CommandGetter {
 				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
 				inRelease = append(inRelease, dir+"Packages", dir+"Packages.gz")
 
-				err = os.WriteFile(dir+"Packages", pkgBuffer[arch].Bytes(), 0755)
+				packagesData := pkgBuffer[arch].Bytes()
+				err = writeAtomicFile(dir+"Packages", packagesData)
 				console.FatalIfErr(err, "write amd64 Packages")
-				err = archive.GZWriteFile(dir+"Packages.gz", pkgBuffer[arch].Bytes(), 0755)
+				compressed, err := gzipData(packagesData)
+				console.FatalIfErr(err, "compress %s Packages", arch)
+				err = writeAtomicFile(dir+"Packages.gz", compressed)
 				console.FatalIfErr(err, "write amd64 Packages.gz")
 			}
 
 			for _, arch := range archs {
 				releasePkg := packages.ReleaseModel{
-					Component:    "main",
+					Component:    comp,
 					Origin:       origin,
 					Label:        label,
 					Architecture: arch,
@@ -169,7 +195,7 @@ func GenerateRelease() console.CommandGetter {
 				console.FatalIfErr(err2, "encode release info")
 
 				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
-				err = os.WriteFile(dir+"Release", releaseInfo, 0755)
+				err = writeAtomicFile(dir+"Release", releaseInfo)
 				console.FatalIfErr(err, "write %s Packages", arch)
 			}
 
@@ -180,10 +206,12 @@ func GenerateRelease() console.CommandGetter {
 			inReleaseModel := &packages.InReleaseModel{
 				Origin:        origin,
 				Label:         label,
-				Component:     "main",
-				Codename:      "stable",
+				Suite:         dist,
+				Component:     comp,
+				Codename:      dist,
 				Date:          time.Now().UTC().Format(time.RFC1123),
-				Architectures: "i386 amd64 arm arm64",
+				Architectures: strings.Join(archs, " "),
+				Components:    comp,
 				Description:   "Packages for Ubuntu and Debian",
 				MD5Sum:        "",
 				SHA1:          "",
@@ -204,13 +232,13 @@ func GenerateRelease() console.CommandGetter {
 
 			inReleaseInfo, err := inReleaseModel.Encode()
 			console.FatalIfErr(err, "encode Release")
-			err = os.WriteFile(fmt.Sprintf(PathDistribution, path, dist)+"Release", inReleaseInfo, 0755)
+			err = writeAtomicFile(fmt.Sprintf(PathDistribution, path, dist)+"Release", inReleaseInfo)
 			console.FatalIfErr(err, "write Release")
 
 			in := bytes.NewBuffer(inReleaseInfo)
 			out := &bytes.Buffer{}
 			console.FatalIfErr(pgpStore.Sign(in, out), "sign Release")
-			err = os.WriteFile(fmt.Sprintf(PathDistribution, path, dist)+"InRelease", out.Bytes(), 0755)
+			err = writeAtomicFile(fmt.Sprintf(PathDistribution, path, dist)+"InRelease", out.Bytes())
 			console.FatalIfErr(err, "write InRelease")
 
 			/**
@@ -219,25 +247,25 @@ func GenerateRelease() console.CommandGetter {
 
 			releaseSignature, err := signDetachedRelease(inReleaseInfo, pgpStore)
 			console.FatalIfErr(err, "sign Release.gpg")
-			err = os.WriteFile(fmt.Sprintf(PathDistribution, path, dist)+"Release.gpg", releaseSignature, 0644)
+			err = writeAtomicFile(fmt.Sprintf(PathDistribution, path, dist)+"Release.gpg", releaseSignature)
 			console.FatalIfErr(err, "write Release.gpg")
 
 			pubKey, err := pgpStore.PublicKey()
 			console.FatalIfErr(err, "read public key")
-			err = os.WriteFile(path+"/key.gpg", pubKey, 0755)
+			err = writeAtomicFile(path+"/key.gpg", pubKey)
 			console.FatalIfErr(err, "write key.gpg")
 
-			info := `
-=========================== amd64 ===========================
+			info := fmt.Sprintf(`
+=========================== %s ===========================
 
 curl -fsSL https://[yourdomain]/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/[yourdomain].gpg
 sudo chmod a+r /etc/apt/keyrings/[yourdomain].gpg
 sudo tee /etc/apt/sources.list.d/[yourdomain].list <<'EOF'
-deb [arch=amd64 signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ stable main
+deb [signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ %s %s
 EOF
 sudo apt update
 
-`
+`, strings.Join(archs, " "), dist, comp)
 
 			console.Infof(info)
 
@@ -258,4 +286,87 @@ func sortPackages(pkgs []*packages.PackegesModel) {
 		}
 		return pkgs[i].Filename > pkgs[j].Filename
 	})
+}
+
+func releaseArchitectures(pkgs []*packages.PackegesModel) ([]string, error) {
+	available := make(map[string]struct{}, len(defaultReleaseArchitectures)+len(pkgs))
+	for _, arch := range defaultReleaseArchitectures {
+		available[arch] = struct{}{}
+	}
+
+	for _, pkg := range pkgs {
+		arch := pkg.Architecture
+		if arch == "all" {
+			continue
+		}
+		if !releaseArchitectureRegexp.MatchString(arch) {
+			return nil, fmt.Errorf("invalid package architecture %q", arch)
+		}
+		available[arch] = struct{}{}
+	}
+
+	result := make([]string, 0, len(available))
+	for arch := range available {
+		result = append(result, arch)
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
+func validateReleasePathComponent(field, value string) error {
+	if !releasePathComponentRegexp.MatchString(value) {
+		return fmt.Errorf("invalid %s %q", field, value)
+	}
+	return nil
+}
+
+func gzipData(data []byte) ([]byte, error) {
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	if _, err := writer.Write(data); err != nil {
+		_ = writer.Close()
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return compressed.Bytes(), nil
+}
+
+func writeAtomicFile(filename string, data []byte) (retErr error) {
+	dir := filepath.Dir(filename)
+	file, err := os.CreateTemp(dir, ".pkg-build-")
+	if err != nil {
+		return err
+	}
+	removeTemp := true
+	closed := false
+	defer func() {
+		if !closed {
+			retErr = errors.Join(retErr, file.Close())
+		}
+		if removeTemp {
+			retErr = errors.Join(retErr, os.Remove(file.Name()))
+		}
+	}()
+
+	if err = file.Chmod(0644); err != nil {
+		return err
+	}
+	if _, err = file.Write(data); err != nil {
+		return err
+	}
+	if err = file.Sync(); err != nil {
+		return err
+	}
+	if err = file.Close(); err != nil {
+		closed = true
+		return err
+	}
+	closed = true
+	if err = os.Rename(file.Name(), filename); err != nil {
+		return err
+	}
+	removeTemp = false
+	return nil
 }
