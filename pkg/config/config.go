@@ -6,8 +6,10 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,6 +33,10 @@ type (
 	Multi struct {
 		Version  string   `yaml:"ver"`
 		Packages []Config `yaml:"packages"`
+	}
+	legacyConfig struct {
+		Version string `yaml:"ver"`
+		Config  `yaml:",inline"`
 	}
 	Config struct {
 		Package      string            `yaml:"package"`
@@ -57,7 +63,7 @@ type (
 )
 
 var (
-	versionRegexp      = regexp.MustCompile(`\d+:\d+\.\d+\.\d+`)
+	versionRegexp      = regexp.MustCompile(`^(?:[0-9]+:)?[0-9](?:[0-9A-Za-z.+~-]*[0-9A-Za-z.+~])?(?:-[0-9][0-9A-Za-z.+~]*)?$`)
 	packageNameRegexp  = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]{0,99}$`)
 	architectureRegexp = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 )
@@ -78,6 +84,17 @@ func Validate(cfg Config) error {
 	for _, arch := range cfg.Architecture {
 		if !architectureRegexp.MatchString(arch) {
 			return fmt.Errorf("invalid architecture %q", arch)
+		}
+	}
+	if strings.TrimSpace(cfg.Maintainer) == "" {
+		return errors.New("maintainer must not be empty")
+	}
+	if len(cfg.Description) == 0 {
+		return errors.New("description must not be empty")
+	}
+	for _, paragraph := range cfg.Description {
+		if strings.TrimSpace(paragraph) == "" {
+			return errors.New("description paragraphs must not be empty")
 		}
 	}
 	return nil
@@ -114,18 +131,24 @@ func Detect(name string) ([]Config, error) {
 	var out []Config
 	switch ver.Version {
 	case "", "0", "1":
-		cfg := Config{}
-		if err = yaml.Unmarshal(b, &cfg); err != nil {
+		cfg := legacyConfig{}
+		if err = decodeStrict(b, &cfg); err != nil {
 			return nil, err
 		}
-		out = append(out, cfg)
+		out = append(out, cfg.Config)
 
 	case "2":
 		cfg := Multi{}
-		if err = yaml.Unmarshal(b, &cfg); err != nil {
+		if err = decodeStrict(b, &cfg); err != nil {
 			return nil, err
 		}
+		if len(cfg.Packages) == 0 {
+			return nil, errors.New("packages must not be empty")
+		}
 		out = append(out, cfg.Packages...)
+
+	default:
+		return nil, fmt.Errorf("unsupported config version %q", ver.Version)
 	}
 
 	for i := 0; i < len(out); i++ {
@@ -135,7 +158,7 @@ func Detect(name string) ([]Config, error) {
 				return nil, fmt.Errorf("fail build git version: %w", err)
 			}
 		} else if !versionRegexp.MatchString(out[i].Version) {
-			return nil, fmt.Errorf("invalid version format, want format 0:0.0.0")
+			return nil, fmt.Errorf("invalid Debian version format")
 		}
 		if err = Validate(out[i]); err != nil {
 			return nil, fmt.Errorf("invalid package config %d: %w", i, err)
@@ -143,6 +166,23 @@ func Detect(name string) ([]Config, error) {
 	}
 
 	return out, nil
+}
+
+func decodeStrict(data []byte, target interface{}) error {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+
+	var extra interface{}
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("configuration must contain a single YAML document")
+		}
+		return err
+	}
+	return nil
 }
 
 func Create() error {

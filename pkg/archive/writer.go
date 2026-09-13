@@ -26,6 +26,8 @@ type TGZWriter struct {
 	dirs map[string]struct{}
 }
 
+var archiveModTime = time.Unix(0, 0).UTC()
+
 func NewWriter(filename string) (*TGZWriter, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
@@ -60,7 +62,7 @@ func (v *TGZWriter) WriteData(filename string, b []byte) (string, string, error)
 	}
 	hdr := &tar.Header{
 		Name:     dst,
-		ModTime:  time.Now(),
+		ModTime:  archiveModTime,
 		Mode:     int64(0644),
 		Size:     int64(len(b)),
 		Typeflag: tar.TypeReg,
@@ -74,7 +76,8 @@ func (v *TGZWriter) WriteData(filename string, b []byte) (string, string, error)
 	} else {
 		v.size += int64(size)
 	}
-	return utils.CleanPath(dst), hex.EncodeToString(md5.New().Sum(b)), nil
+	sum := md5.Sum(b)
+	return utils.CleanPath(dst), hex.EncodeToString(sum[:]), nil
 }
 
 func (v *TGZWriter) WriteFile(src, dst string) (string, string, error) {
@@ -93,7 +96,7 @@ func (v *TGZWriter) WriteFile(src, dst string) (string, string, error) {
 	}
 	hdr := &tar.Header{
 		Name:     dst,
-		ModTime:  stat.ModTime(),
+		ModTime:  archiveModTime,
 		Mode:     int64(stat.Mode()),
 		Size:     stat.Size(),
 		Typeflag: tar.TypeReg,
@@ -126,7 +129,7 @@ func (v *TGZWriter) mkdirAll(filename string) error {
 		}
 		hdr := &tar.Header{
 			Name:     path,
-			ModTime:  time.Now(),
+			ModTime:  archiveModTime,
 			Mode:     int64(0755),
 			Typeflag: tar.TypeDir,
 			Format:   tar.FormatGNU,

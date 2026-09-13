@@ -7,20 +7,28 @@ package archive
 
 import (
 	"compress/gzip"
+	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 )
 
-func GZWriteFile(filename string, data []byte, perm fs.FileMode) error {
+func GZWriteFile(filename string, data []byte, perm fs.FileMode) (retErr error) {
 	fd, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
 		return err
 	}
-	defer fd.Close() //nolint:errcheck
 
 	gzw := gzip.NewWriter(fd)
-	defer gzw.Close() //nolint:errcheck
+	defer func() {
+		if err := gzw.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close gzip writer: %w", err))
+		}
+		if err := fd.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("close output file: %w", err))
+		}
+	}()
 
-	_, err = gzw.Write(data)
-	return err
+	_, retErr = gzw.Write(data)
+	return retErr
 }

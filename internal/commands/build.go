@@ -9,6 +9,7 @@ import (
 	iofs "io/fs"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"go.osspkg.com/archives/ar"
@@ -62,9 +63,24 @@ func Build() console.CommandGetter {
 
 				exec.Build(conf.Control.Build, conf.Version, conf.Architecture, func(arch string, replacer exec.Replacer) {
 
-					// check file version
+					if noRevision {
+						oldDebFile, _, _ := packages.BuildName(storeDir, conf.Package, conf.Version, arch, true)
+						oldPackageFile, err := paths.DirectChildPath(storeDir, oldDebFile)
+						console.FatalIfErr(err, "validate package output")
+						oldPackageRel := filepath.Join(storeRel, oldPackageFile)
+						console.FatalIfErr(paths.ValidateRootRelativePath(oldPackageRel), "validate package output")
+						console.FatalIfErr(paths.RemovePackageFile(storageRoot, oldPackageRel), "remove old %s", oldDebFile)
+					}
 
-					debFile, revision, carch := packages.BuildName(storeDir, conf.Package, conf.Version, arch, noRevision)
+					reservation, revision, carch, err := packages.ReserveBuildName(storeDir, conf.Package, conf.Version, arch, noRevision)
+					console.FatalIfErr(err, "reserve package output")
+					defer func() {
+						if err := reservation.Abort(); err != nil {
+							console.Errorf("abort package output reservation %s: %v", reservation.Path(), err)
+						}
+					}()
+
+					debFile := reservation.Path()
 					packageFile, err := paths.DirectChildPath(storeDir, debFile)
 					console.FatalIfErr(err, "validate package output")
 					packageRel := filepath.Join(storeRel, packageFile)
@@ -81,7 +97,13 @@ func Build() console.CommandGetter {
 					tg, err := archive.NewWriter(dataFile)
 					console.FatalIfErr(err, "create data.tar.gz")
 
-					for dst, src := range conf.Data {
+					dataFiles := make([]string, 0, len(conf.Data))
+					for dst := range conf.Data {
+						dataFiles = append(dataFiles, dst)
+					}
+					sort.Strings(dataFiles)
+					for _, dst := range dataFiles {
+						src := conf.Data[dst]
 						src = replacer.Replace(src)
 						var (
 							f, h string
@@ -209,18 +231,13 @@ func Build() console.CommandGetter {
 
 					// build deb
 
-					if noRevision {
-						console.FatalIfErr(paths.RemovePackageFile(storageRoot, packageRel), "remove old %s", debFile)
-					} else {
-						console.FatalIfErr(paths.EnsurePackageOutputAbsent(storageRoot, packageRel), "reserve package output %s", debFile)
-					}
-
 					deb, err := ar.Open(debFile, 0644)
 					console.FatalIfErr(err, "create %s", debFile)
 					console.FatalIfErr(deb.Write("debian-binary", []byte("2.0\n"), 0644), "write debian-binary to %s", debFile)
 					console.FatalIfErr(deb.Import(controlFile, 0644), "write %s to %s", controlFile, debFile)
 					console.FatalIfErr(deb.Import(dataFile, 0644), "write %s to %s", dataFile, debFile)
 					console.FatalIfErr(deb.Close(), "close file %s", debFile)
+					console.FatalIfErr(reservation.Commit(), "commit package output %s", debFile)
 
 					console.Infof("Result: %s", debFile)
 				})

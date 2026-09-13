@@ -70,26 +70,7 @@ func (v *Control) Save(dir string, subver string) (string, error) {
 		Depends: func() string {
 			return strings.Join(v.conf.Control.Depends, ", ")
 		}(),
-		Description: func() string {
-			for indx, s := range v.conf.Description {
-				cur := 0
-				words := strings.Split(s, " ")
-				if indx > 0 {
-					buf.WriteString("\n .\n ")
-				}
-				for _, word := range words {
-					i, _ := buf.WriteString(word + " ")
-					cur += i
-
-					if cur >= descriptionMaxLen {
-						buf.WriteString("\n")
-						cur = 0
-					}
-				}
-			}
-
-			return buf.String()
-		}(),
+		Description: formatDescription(v.conf.Description),
 	}
 
 	buf.Reset()
@@ -99,6 +80,42 @@ func (v *Control) Save(dir string, subver string) (string, error) {
 	}
 
 	return controlFile, os.WriteFile(controlFile, buf.Bytes(), 0644)
+}
+
+func formatDescription(paragraphs []string) string {
+	lines := make([]string, 0, len(paragraphs))
+	for index, paragraph := range paragraphs {
+		if index > 0 {
+			lines = append(lines, ".")
+		}
+
+		words := strings.Fields(paragraph)
+		line := ""
+		for _, word := range words {
+			if line == "" {
+				line = word
+				continue
+			}
+			if len(line)+1+len(word) > descriptionMaxLen {
+				lines = append(lines, line)
+				line = word
+				continue
+			}
+			line += " " + word
+		}
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	var description strings.Builder
+	for index, line := range lines {
+		if index > 0 {
+			description.WriteString("\n ")
+		}
+		description.WriteString(line)
+	}
+	return description.String()
 }
 
 var controlTmpl = `Package: {{.Package}}

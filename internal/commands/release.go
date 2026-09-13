@@ -119,10 +119,7 @@ func GenerateRelease() console.CommandGetter {
 			})
 			console.FatalIfErr(err, "list packages")
 
-			sort.Slice(pkgs, func(i, j int) bool {
-				return pkgs[i].Package > pkgs[j].Package &&
-					pkgs[i].Version > pkgs[j].Version
-			})
+			sortPackages(pkgs)
 
 			/**
 			Release
@@ -245,5 +242,20 @@ sudo apt update
 			console.Infof(info)
 
 		})
+	})
+}
+
+func sortPackages(pkgs []*packages.PackegesModel) {
+	sort.Slice(pkgs, func(i, j int) bool {
+		if pkgs[i].Package != pkgs[j].Package {
+			return pkgs[i].Package > pkgs[j].Package
+		}
+		if pkgs[i].Version != pkgs[j].Version {
+			return pkgs[i].Version > pkgs[j].Version
+		}
+		if pkgs[i].Architecture != pkgs[j].Architecture {
+			return pkgs[i].Architecture > pkgs[j].Architecture
+		}
+		return pkgs[i].Filename > pkgs[j].Filename
 	})
 }

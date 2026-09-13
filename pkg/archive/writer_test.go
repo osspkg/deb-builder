@@ -7,6 +7,7 @@ package archive_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ func TestTarGZ(t *testing.T) {
 
 	f, h, err := trgz.WriteData("hello.txt", []byte("bbbbb"))
 	require.NoError(t, err)
-	require.Equal(t, "6262626262d41d8cd98f00b204e9800998ecf8427e", h)
+	require.Equal(t, "a21075a36eeddd084e17611a238c7101", h)
 	require.Equal(t, "hello.txt", f)
 
 	f, h, err = trgz.WriteFile("/tmp/test.txt", "var/log/test.log")
@@ -33,4 +34,22 @@ func TestTarGZ(t *testing.T) {
 
 	err = trgz.Close()
 	require.NoError(t, err)
+}
+
+func TestTarGZIsReproducible(t *testing.T) {
+	var archives [][]byte
+	for range 2 {
+		filename := filepath.Join(t.TempDir(), "data.tar.gz")
+		writer, err := archive.NewWriter(filename)
+		require.NoError(t, err)
+		_, _, err = writer.WriteData("var/lib/demo/data", []byte("stable content"))
+		require.NoError(t, err)
+		require.NoError(t, writer.Close())
+
+		data, err := os.ReadFile(filename)
+		require.NoError(t, err)
+		archives = append(archives, data)
+	}
+
+	require.Equal(t, archives[0], archives[1])
 }
