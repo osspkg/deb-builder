@@ -5,7 +5,7 @@
 
 package packages
 
-type PackegesModel struct {
+type PackagesModel struct {
 	Package      string `key:"Package"`
 	Source       string `key:"Source"`
 	Version      string `key:"Version"`
@@ -19,11 +19,15 @@ type PackegesModel struct {
 	Raw          string `key:"_"`
 }
 
-func (v *PackegesModel) Decode(data []byte) error {
+// PackegesModel is kept as a compatibility alias for the misspelled public API.
+// Deprecated: use PackagesModel.
+type PackegesModel = PackagesModel
+
+func (v *PackagesModel) Decode(data []byte) error {
 	return decode(data, v)
 }
 
-func (v *PackegesModel) Encode() ([]byte, error) {
+func (v *PackagesModel) Encode() ([]byte, error) {
 	return encode(v)
 }
 

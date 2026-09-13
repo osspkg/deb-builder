@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPackegesModelRemainsCompatibleAlias(t *testing.T) {
+	legacy := &PackegesModel{Package: "demo"}
+	var canonical *PackagesModel = legacy
+	require.Equal(t, "demo", canonical.Package)
+}
+
 func TestModel_Decode(t *testing.T) {
 	type fields struct {
 		Package      string
@@ -127,7 +133,7 @@ Description: Link shortening service `),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := &PackegesModel{}
+			v := &PackagesModel{}
 			require.NoError(t, v.Decode(tt.args.data))
 			require.Equal(t, tt.fields.Package, v.Package)
 			require.Equal(t, tt.fields.Source, v.Source)
@@ -219,7 +225,7 @@ Description: Launcher for the Steam software distribution service
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := &PackegesModel{
+			v := &PackagesModel{
 				Package:      tt.fields.Package,
 				Source:       tt.fields.Source,
 				Version:      tt.fields.Version,

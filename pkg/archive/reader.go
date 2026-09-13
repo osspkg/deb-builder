@@ -12,18 +12,27 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"strings"
 )
 
 // MaxEntrySize is the maximum decompressed size returned by Read.
 const MaxEntrySize int64 = 10 << 20
 
-// ErrEntryTooLarge reports that an archive entry exceeds MaxEntrySize.
-var ErrEntryTooLarge = errors.New("archive entry exceeds maximum size")
+var (
+	// ErrEntryTooLarge reports that an archive entry exceeds MaxEntrySize.
+	ErrEntryTooLarge = errors.New("archive entry exceeds maximum size")
+	// ErrInvalidEntry reports an unsafe or non-regular archive entry.
+	ErrInvalidEntry = errors.New("invalid archive entry")
+	// ErrReaderClosed reports an operation on a closed archive reader.
+	ErrReaderClosed = errors.New("archive reader is closed")
+)
 
 type TGZReader struct {
-	fd  *os.File
-	gz  *gzip.Reader
-	tar *tar.Reader
+	fd     *os.File
+	gz     *gzip.Reader
+	tar    *tar.Reader
+	closed bool
 }
 
 func NewReader(filename string) (*TGZReader, error) {
@@ -43,22 +52,48 @@ func NewReader(filename string) (*TGZReader, error) {
 }
 
 func (v *TGZReader) Close() error {
+	if v.closed {
+		return nil
+	}
+	v.closed = true
 	gzipErr := v.gz.Close()
 	fileErr := v.fd.Close()
 	return errors.Join(gzipErr, fileErr)
 }
 
 func (v *TGZReader) Reset() error {
-	return v.gz.Reset(v.tar)
+	if v.closed {
+		return ErrReaderClosed
+	}
+	if _, err := v.fd.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	if err := v.gz.Reset(v.fd); err != nil {
+		return err
+	}
+	v.tar = tar.NewReader(v.gz)
+	return nil
 }
 
 func (v *TGZReader) Read(filename string) ([]byte, error) {
+	if v.closed {
+		return nil, ErrReaderClosed
+	}
+	if err := validateEntryName(filename); err != nil {
+		return nil, err
+	}
 	for {
 		hdr, err := v.tar.Next()
 		if err != nil {
 			return nil, err
 		}
+		if err := validateEntryName(hdr.Name); err != nil {
+			return nil, err
+		}
 		if hdr.Name == filename {
+			if !hdr.FileInfo().Mode().IsRegular() {
+				return nil, fmt.Errorf("%w: %q is not a regular file", ErrInvalidEntry, filename)
+			}
 			data, err := io.ReadAll(io.LimitReader(v.tar, MaxEntrySize+1))
 			if err != nil {
 				return nil, err
@@ -69,4 +104,12 @@ func (v *TGZReader) Read(filename string) ([]byte, error) {
 			return data, nil
 		}
 	}
+}
+
+func validateEntryName(name string) error {
+	clean := path.Clean(name)
+	if name == "" || strings.IndexByte(name, 0) >= 0 || path.IsAbs(name) || clean == ".." || strings.HasPrefix(clean, "../") {
+		return fmt.Errorf("%w: %q", ErrInvalidEntry, name)
+	}
+	return nil
 }

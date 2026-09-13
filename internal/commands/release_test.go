@@ -20,7 +20,7 @@ import (
 )
 
 func TestSortPackagesUsesTotalOrder(t *testing.T) {
-	pkgs := []*packages.PackegesModel{
+	pkgs := []*packages.PackagesModel{
 		{Package: "alpha", Version: "1.0", Architecture: "amd64", Filename: "alpha-amd64.deb"},
 		{Package: "zeta", Version: "1.0", Architecture: "amd64", Filename: "zeta-amd64.deb"},
 		{Package: "alpha", Version: "2.0", Architecture: "amd64", Filename: "alpha-new.deb"},
@@ -43,7 +43,7 @@ func TestSortPackagesUsesTotalOrder(t *testing.T) {
 }
 
 func TestReleaseArchitecturesIncludesDiscoveredArchitectures(t *testing.T) {
-	archs, err := releaseArchitectures([]*packages.PackegesModel{
+	archs, err := releaseArchitectures([]*packages.PackagesModel{
 		{Architecture: "riscv64"},
 		{Architecture: "all"},
 	})
@@ -53,7 +53,7 @@ func TestReleaseArchitecturesIncludesDiscoveredArchitectures(t *testing.T) {
 }
 
 func TestReleaseArchitecturesRejectsUnsafeArchitecture(t *testing.T) {
-	_, err := releaseArchitectures([]*packages.PackegesModel{{Architecture: "../../outside"}})
+	_, err := releaseArchitectures([]*packages.PackagesModel{{Architecture: "../../outside"}})
 	require.Error(t, err)
 }
 
@@ -85,6 +85,11 @@ func TestInReleaseMetadataContainsDistributionAndComponent(t *testing.T) {
 	require.Contains(t, string(data), "Components: contrib\n")
 	require.Contains(t, string(data), "Architectures: amd64 riscv64\n")
 	require.True(t, strings.HasSuffix(string(data), "\n"))
+}
+
+func TestRunReleaseReturnsValidationError(t *testing.T) {
+	err := RunRelease(ReleaseOptions{Dist: "../outside", Component: "main"})
+	require.Error(t, err)
 }
 
 func TestReleaseMetadataAcceptedByAPT(t *testing.T) {

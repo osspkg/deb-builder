@@ -42,6 +42,19 @@ var (
 	releasePathComponentRegexp  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9+._-]*$`)
 )
 
+// ReleaseOptions contains the inputs needed to generate a signed repository.
+type ReleaseOptions struct {
+	ReleaseDir string
+	TempDir    string
+	PrivateKey string
+	Password   string
+	Origin     string
+	Label      string
+	Dist       string
+	Component  string
+}
+
+// GenerateRelease is the CLI adapter for RunRelease.
 func GenerateRelease() console.CommandGetter {
 	return console.NewCommand(func(setter console.CommandSetter) {
 		setter.Setup("release", "Generate deb repository release")
@@ -56,206 +69,218 @@ func GenerateRelease() console.CommandGetter {
 			f.StringVar("comp", utils.GetEnv("DEB_COMPONENT", "main"), "release component")
 		})
 		setter.ExecFunc(func(_ []string, path, tmp, privKeyFile, passwd, origin, label, dist, comp string) {
-			console.FatalIfErr(validateReleasePathComponent("distribution", dist), "validate distribution")
-			console.FatalIfErr(validateReleasePathComponent("component", comp), "validate component")
+			console.FatalIfErr(RunRelease(ReleaseOptions{
+				ReleaseDir: path,
+				TempDir:    tmp,
+				PrivateKey: privKeyFile,
+				Password:   passwd,
+				Origin:     origin,
+				Label:      label,
+				Dist:       dist,
+				Component:  comp,
+			}), "release")
+		})
+	})
+}
 
-			/**
-			LOAD PGP
-			*/
-			pgpStore := pgp.New()
-			console.FatalIfErr(pgpStore.SetKeyFromFile(privKeyFile, passwd), "read PGP private key")
+// RunRelease generates repository indexes and signatures without terminating
+// the process on an error. The CLI wrapper above is responsible for reporting
+// the returned error and choosing its exit behavior.
+func RunRelease(options ReleaseOptions) (retErr error) {
+	if err := validateReleasePathComponent("distribution", options.Dist); err != nil {
+		return err
+	}
+	if err := validateReleasePathComponent("component", options.Component); err != nil {
+		return err
+	}
 
-			/**
-			Packages
-			*/
+	pgpStore := pgp.New()
+	if err := pgpStore.SetKeyFromFile(options.PrivateKey, options.Password); err != nil {
+		return fmt.Errorf("read PGP private key: %w", err)
+	}
 
-			pkgs := make([]*packages.PackegesModel, 0, 1000)
-			pathcomp := fmt.Sprintf(PathComponent, path, comp)
-			err := filepath.Walk(pathcomp, func(filename string, info fs.FileInfo, err error) (retErr error) {
-				if err != nil {
-					return err
-				}
-				if info.IsDir() {
-					return nil
-				}
-				if !info.Mode().IsRegular() || filepath.Ext(info.Name()) != ".deb" {
-					return nil
-				}
-				shortName := strings.Replace(filename, path+"/", "", 1)
-				console.Infof("deb: %s", shortName)
+	pkgs, err := discoverReleasePackages(options)
+	if err != nil {
+		return fmt.Errorf("list packages: %w", err)
+	}
 
-				arch, err := ar.Open(filename, info.Mode().Perm())
-				if err != nil {
-					return fmt.Errorf("open deb: %w", err)
-				}
-				defer func() {
-					if closeErr := arch.Close(); closeErr != nil {
-						retErr = errors.Join(retErr, fmt.Errorf("close deb: %w", closeErr))
-					}
-				}()
-				if err = arch.Export("control.tar.gz", tmp); err != nil {
-					return fmt.Errorf("export control.tar.gz: %w", err)
-				}
+	sortPackages(pkgs)
+	archs, err := releaseArchitectures(pkgs)
+	if err != nil {
+		return fmt.Errorf("detect package architectures: %w", err)
+	}
+	inRelease, err := writeReleaseIndexes(options, pkgs, archs)
+	if err != nil {
+		return err
+	}
+	if err := writeArchitectureReleaseFiles(options, archs); err != nil {
+		return err
+	}
+	return writeSignedRelease(options, archs, inRelease, pgpStore)
+}
 
-				tgz, err := archive.NewReader(tmp + "/control.tar.gz")
-				if err != nil {
-					return fmt.Errorf("open control.tar.gz: %w", err)
-				}
-				defer func() {
-					if closeErr := tgz.Close(); closeErr != nil {
-						retErr = errors.Join(retErr, fmt.Errorf("close control.tar.gz: %w", closeErr))
-					}
-				}()
-				controlData, err := tgz.Read(control.ControlFileName)
-				if err != nil {
-					return fmt.Errorf("read control: %w", err)
-				}
+func discoverReleasePackages(options ReleaseOptions) ([]*packages.PackagesModel, error) {
+	pkgs := make([]*packages.PackagesModel, 0, 1000)
+	pathcomp := fmt.Sprintf(PathComponent, options.ReleaseDir, options.Component)
+	err := filepath.Walk(pathcomp, func(filename string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || !info.Mode().IsRegular() || filepath.Ext(info.Name()) != ".deb" {
+			return nil
+		}
+		shortName, err := filepath.Rel(options.ReleaseDir, filename)
+		if err != nil {
+			return fmt.Errorf("relative package path: %w", err)
+		}
+		shortName = filepath.ToSlash(shortName)
+		console.Infof("deb: %s", shortName)
 
-				pkgModel := &packages.PackegesModel{}
-				if err = pkgModel.Decode(controlData); err != nil {
-					return fmt.Errorf("decode control: %w", err)
-				}
-				if pkgModel.Package == "" || pkgModel.Version == "" || pkgModel.Architecture == "" {
-					return fmt.Errorf("control is missing package, version, or architecture")
-				}
-				pkgModel.Filename = shortName
-				pkgModel.Size = info.Size()
+		pkgModel, err := readPackageModel(filename, info.Mode().Perm(), options.TempDir)
+		if err != nil {
+			return err
+		}
+		pkgModel.Filename = shortName
+		pkgModel.Size = info.Size()
+		mh, err := hash.CalcMultiHash(filename)
+		if err != nil {
+			return fmt.Errorf("calc multi hash: %w", err)
+		}
+		pkgModel.MD5sum = mh.MD5
+		pkgModel.SHA1 = mh.SHA1
+		pkgModel.SHA256 = mh.SHA256
+		pkgs = append(pkgs, pkgModel)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pkgs, nil
+}
 
-				mh, err := hash.CalcMultiHash(filename)
-				if err != nil {
-					return fmt.Errorf("calc multi hash: %w", err)
-				}
+func writeReleaseIndexes(options ReleaseOptions, pkgs []*packages.PackagesModel, archs []string) ([]string, error) {
+	for _, arch := range archs {
+		dir := fmt.Sprintf(PathBinary, options.ReleaseDir, options.Dist, options.Component, arch)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("validate dirs: %w", err)
+		}
+	}
 
-				pkgModel.MD5sum = mh.MD5
-				pkgModel.SHA1 = mh.SHA1
-				pkgModel.SHA256 = mh.SHA256
-
-				pkgs = append(pkgs, pkgModel)
-				return nil
-			})
-			console.FatalIfErr(err, "list packages")
-
-			sortPackages(pkgs)
-			archs, err := releaseArchitectures(pkgs)
-			console.FatalIfErr(err, "detect package architectures")
-
+	pkgBuffer := make(map[string]*buffer.Buffer, len(archs))
+	for _, arch := range archs {
+		pkgBuffer[arch] = buffer.New(arch)
+	}
+	for _, pkg := range pkgs {
+		pkgInfo, err := pkg.Encode()
+		if err != nil {
+			return nil, fmt.Errorf("encode package: %w", err)
+		}
+		pkgInfo = append(pkgInfo, []byte("\n\n")...)
+		if pkg.Architecture == "all" {
 			for _, arch := range archs {
-				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
-				console.FatalIfErr(os.MkdirAll(dir, 0755), "validate dirs")
-			}
-
-			/**
-			Release
-			*/
-
-			pkgBuffer := make(map[string]*buffer.Buffer)
-			for _, v := range archs {
-				pkgBuffer[v] = buffer.New(v)
-			}
-
-			for _, pkg := range pkgs {
-				pkgInfo, err0 := pkg.Encode()
-				console.FatalIfErr(err0, "encode package")
-				pkgInfo = append(pkgInfo, []byte("\n\n")...)
-
-				if pkg.Architecture == "all" {
-					for _, arch := range archs {
-						pkgBuffer[arch].Write(pkgInfo)
-					}
-				} else {
-					if pb, ok := pkgBuffer[pkg.Architecture]; ok {
-						pb.Write(pkgInfo)
-					}
+				if _, err := pkgBuffer[arch].WriteError(pkgInfo); err != nil {
+					return nil, fmt.Errorf("write %s package: %w", arch, err)
 				}
 			}
-
-			inRelease := []string{}
-			for _, arch := range archs {
-				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
-				inRelease = append(inRelease, dir+"Packages", dir+"Packages.gz")
-
-				packagesData := pkgBuffer[arch].Bytes()
-				err = writeAtomicFile(dir+"Packages", packagesData)
-				console.FatalIfErr(err, "write amd64 Packages")
-				compressed, err := gzipData(packagesData)
-				console.FatalIfErr(err, "compress %s Packages", arch)
-				err = writeAtomicFile(dir+"Packages.gz", compressed)
-				console.FatalIfErr(err, "write amd64 Packages.gz")
+			continue
+		}
+		if pb, ok := pkgBuffer[pkg.Architecture]; ok {
+			if _, err := pb.WriteError(pkgInfo); err != nil {
+				return nil, fmt.Errorf("write %s package: %w", pkg.Architecture, err)
 			}
+		}
+	}
 
-			for _, arch := range archs {
-				releasePkg := packages.ReleaseModel{
-					Component:    comp,
-					Origin:       origin,
-					Label:        label,
-					Architecture: arch,
-					Description:  "Packages for Ubuntu and Debian",
-				}
-				releaseInfo, err2 := releasePkg.Encode()
-				console.FatalIfErr(err2, "encode release info")
+	inRelease := make([]string, 0, len(archs)*2)
+	for _, arch := range archs {
+		dir := fmt.Sprintf(PathBinary, options.ReleaseDir, options.Dist, options.Component, arch)
+		packagesData := pkgBuffer[arch].Bytes()
+		packagesFile := filepath.Join(dir, "Packages")
+		packagesGZFile := filepath.Join(dir, "Packages.gz")
+		if err := writeAtomicFile(packagesFile, packagesData); err != nil {
+			return nil, fmt.Errorf("write %s Packages: %w", arch, err)
+		}
+		compressed, err := gzipData(packagesData)
+		if err != nil {
+			return nil, fmt.Errorf("compress %s Packages: %w", arch, err)
+		}
+		if err := writeAtomicFile(packagesGZFile, compressed); err != nil {
+			return nil, fmt.Errorf("write %s Packages.gz: %w", arch, err)
+		}
+		inRelease = append(inRelease, packagesFile, packagesGZFile)
+	}
+	return inRelease, nil
+}
 
-				dir := fmt.Sprintf(PathBinary, path, dist, comp, arch)
-				err = writeAtomicFile(dir+"Release", releaseInfo)
-				console.FatalIfErr(err, "write %s Packages", arch)
-			}
+func writeArchitectureReleaseFiles(options ReleaseOptions, archs []string) error {
+	for _, arch := range archs {
+		releasePkg := packages.ReleaseModel{
+			Component:    options.Component,
+			Origin:       options.Origin,
+			Label:        options.Label,
+			Architecture: arch,
+			Description:  "Packages for Ubuntu and Debian",
+		}
+		releaseInfo, err := releasePkg.Encode()
+		if err != nil {
+			return fmt.Errorf("encode release info: %w", err)
+		}
+		dir := fmt.Sprintf(PathBinary, options.ReleaseDir, options.Dist, options.Component, arch)
+		if err := writeAtomicFile(filepath.Join(dir, "Release"), releaseInfo); err != nil {
+			return fmt.Errorf("write %s Release: %w", arch, err)
+		}
+	}
+	return nil
+}
 
-			/**
-			InRelease
-			*/
+func writeSignedRelease(options ReleaseOptions, archs []string, files []string, pgpStore pgp.Signer) error {
+	inReleaseModel := &packages.InReleaseModel{
+		Origin:        options.Origin,
+		Label:         options.Label,
+		Suite:         options.Dist,
+		Component:     options.Component,
+		Codename:      options.Dist,
+		Date:          time.Now().UTC().Format(time.RFC1123),
+		Architectures: strings.Join(archs, " "),
+		Components:    options.Component,
+		Description:   "Packages for Ubuntu and Debian",
+	}
+	if err := addReleaseHashes(options, inReleaseModel, files); err != nil {
+		return err
+	}
+	inReleaseInfo, err := inReleaseModel.Encode()
+	if err != nil {
+		return fmt.Errorf("encode Release: %w", err)
+	}
+	distDir := fmt.Sprintf(PathDistribution, options.ReleaseDir, options.Dist)
+	if err := writeAtomicFile(filepath.Join(distDir, "Release"), inReleaseInfo); err != nil {
+		return fmt.Errorf("write Release: %w", err)
+	}
 
-			inReleaseModel := &packages.InReleaseModel{
-				Origin:        origin,
-				Label:         label,
-				Suite:         dist,
-				Component:     comp,
-				Codename:      dist,
-				Date:          time.Now().UTC().Format(time.RFC1123),
-				Architectures: strings.Join(archs, " "),
-				Components:    comp,
-				Description:   "Packages for Ubuntu and Debian",
-				MD5Sum:        "",
-				SHA1:          "",
-				SHA256:        "",
-			}
+	in := bytes.NewBuffer(inReleaseInfo)
+	out := &bytes.Buffer{}
+	if err := pgpStore.Sign(in, out); err != nil {
+		return fmt.Errorf("sign Release: %w", err)
+	}
+	if err := writeAtomicFile(filepath.Join(distDir, "InRelease"), out.Bytes()); err != nil {
+		return fmt.Errorf("write InRelease: %w", err)
+	}
+	releaseSignature, err := signDetachedRelease(inReleaseInfo, pgpStore)
+	if err != nil {
+		return fmt.Errorf("sign Release.gpg: %w", err)
+	}
+	if err := writeAtomicFile(filepath.Join(distDir, "Release.gpg"), releaseSignature); err != nil {
+		return fmt.Errorf("write Release.gpg: %w", err)
+	}
+	pubKey, err := pgpStore.PublicKey()
+	if err != nil {
+		return fmt.Errorf("read public key: %w", err)
+	}
+	if err := writeAtomicFile(filepath.Join(options.ReleaseDir, "key.gpg"), pubKey); err != nil {
+		return fmt.Errorf("write key.gpg: %w", err)
+	}
 
-			for _, fileName := range inRelease {
-				inrHash, err1 := hash.CalcMultiHash(fileName)
-				console.FatalIfErr(err1, "calc multi hash: %s", fileName)
-				shortName := strings.Replace(fileName, fmt.Sprintf(PathDistribution, path, dist), "", 1)
-				stats, err3 := os.Stat(fileName)
-				console.FatalIfErr(err3, "file stat: %s", fileName)
-
-				inReleaseModel.MD5Sum += fmt.Sprintf("\n %s %d %s", inrHash.MD5, stats.Size(), shortName)
-				inReleaseModel.SHA1 += fmt.Sprintf("\n %s %d %s", inrHash.SHA1, stats.Size(), shortName)
-				inReleaseModel.SHA256 += fmt.Sprintf("\n %s %d %s", inrHash.SHA256, stats.Size(), shortName)
-			}
-
-			inReleaseInfo, err := inReleaseModel.Encode()
-			console.FatalIfErr(err, "encode Release")
-			err = writeAtomicFile(fmt.Sprintf(PathDistribution, path, dist)+"Release", inReleaseInfo)
-			console.FatalIfErr(err, "write Release")
-
-			in := bytes.NewBuffer(inReleaseInfo)
-			out := &bytes.Buffer{}
-			console.FatalIfErr(pgpStore.Sign(in, out), "sign Release")
-			err = writeAtomicFile(fmt.Sprintf(PathDistribution, path, dist)+"InRelease", out.Bytes())
-			console.FatalIfErr(err, "write InRelease")
-
-			/**
-			Detached Release signature
-			*/
-
-			releaseSignature, err := signDetachedRelease(inReleaseInfo, pgpStore)
-			console.FatalIfErr(err, "sign Release.gpg")
-			err = writeAtomicFile(fmt.Sprintf(PathDistribution, path, dist)+"Release.gpg", releaseSignature)
-			console.FatalIfErr(err, "write Release.gpg")
-
-			pubKey, err := pgpStore.PublicKey()
-			console.FatalIfErr(err, "read public key")
-			err = writeAtomicFile(path+"/key.gpg", pubKey)
-			console.FatalIfErr(err, "write key.gpg")
-
-			info := fmt.Sprintf(`
+	info := fmt.Sprintf(`
 =========================== %s ===========================
 
 curl -fsSL https://[yourdomain]/key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/[yourdomain].gpg
@@ -265,15 +290,70 @@ deb [signed-by=/etc/apt/keyrings/[yourdomain].gpg] https://[yourdomain]/ %s %s
 EOF
 sudo apt update
 
-`, strings.Join(archs, " "), dist, comp)
-
-			console.Infof(info)
-
-		})
-	})
+`, strings.Join(archs, " "), options.Dist, options.Component)
+	console.Infof(info)
+	return nil
 }
 
-func sortPackages(pkgs []*packages.PackegesModel) {
+func addReleaseHashes(options ReleaseOptions, model *packages.InReleaseModel, files []string) error {
+	distDir := fmt.Sprintf(PathDistribution, options.ReleaseDir, options.Dist)
+	for _, filename := range files {
+		inrHash, err := hash.CalcMultiHash(filename)
+		if err != nil {
+			return fmt.Errorf("calc multi hash: %s: %w", filename, err)
+		}
+		shortName, err := filepath.Rel(distDir, filename)
+		if err != nil {
+			return fmt.Errorf("relative release path: %w", err)
+		}
+		stats, err := os.Stat(filename)
+		if err != nil {
+			return fmt.Errorf("file stat: %s: %w", filename, err)
+		}
+		shortName = filepath.ToSlash(shortName)
+		model.MD5Sum += fmt.Sprintf("\n %s %d %s", inrHash.MD5, stats.Size(), shortName)
+		model.SHA1 += fmt.Sprintf("\n %s %d %s", inrHash.SHA1, stats.Size(), shortName)
+		model.SHA256 += fmt.Sprintf("\n %s %d %s", inrHash.SHA256, stats.Size(), shortName)
+	}
+	return nil
+}
+
+func readPackageModel(filename string, permission os.FileMode, tempDir string) (ret *packages.PackagesModel, retErr error) {
+	arch, err := ar.Open(filename, permission)
+	if err != nil {
+		return nil, fmt.Errorf("open deb: %w", err)
+	}
+	if err := arch.Export("control.tar.gz", tempDir); err != nil {
+		return nil, errors.Join(fmt.Errorf("export control.tar.gz: %w", err), arch.Close())
+	}
+	if err := arch.Close(); err != nil {
+		return nil, fmt.Errorf("close deb: %w", err)
+	}
+
+	tgz, err := archive.NewReader(filepath.Join(tempDir, "control.tar.gz"))
+	if err != nil {
+		return nil, fmt.Errorf("open control.tar.gz: %w", err)
+	}
+	controlData, err := tgz.Read(control.ControlFileName)
+	closeErr := tgz.Close()
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("read control: %w", err), closeErr)
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("close control.tar.gz: %w", closeErr)
+	}
+
+	pkgModel := &packages.PackagesModel{}
+	if err := pkgModel.Decode(controlData); err != nil {
+		return nil, fmt.Errorf("decode control: %w", err)
+	}
+	if pkgModel.Package == "" || pkgModel.Version == "" || pkgModel.Architecture == "" {
+		return nil, errors.New("control is missing package, version, or architecture")
+	}
+	return pkgModel, nil
+}
+
+func sortPackages(pkgs []*packages.PackagesModel) {
 	sort.Slice(pkgs, func(i, j int) bool {
 		if pkgs[i].Package != pkgs[j].Package {
 			return pkgs[i].Package > pkgs[j].Package
@@ -288,12 +368,11 @@ func sortPackages(pkgs []*packages.PackegesModel) {
 	})
 }
 
-func releaseArchitectures(pkgs []*packages.PackegesModel) ([]string, error) {
+func releaseArchitectures(pkgs []*packages.PackagesModel) ([]string, error) {
 	available := make(map[string]struct{}, len(defaultReleaseArchitectures)+len(pkgs))
 	for _, arch := range defaultReleaseArchitectures {
 		available[arch] = struct{}{}
 	}
-
 	for _, pkg := range pkgs {
 		arch := pkg.Architecture
 		if arch == "all" {
@@ -304,7 +383,6 @@ func releaseArchitectures(pkgs []*packages.PackegesModel) ([]string, error) {
 		}
 		available[arch] = struct{}{}
 	}
-
 	result := make([]string, 0, len(available))
 	for arch := range available {
 		result = append(result, arch)
@@ -350,21 +428,21 @@ func writeAtomicFile(filename string, data []byte) (retErr error) {
 		}
 	}()
 
-	if err = file.Chmod(0644); err != nil {
+	if err := file.Chmod(0644); err != nil {
 		return err
 	}
-	if _, err = file.Write(data); err != nil {
+	if _, err := file.Write(data); err != nil {
 		return err
 	}
-	if err = file.Sync(); err != nil {
+	if err := file.Sync(); err != nil {
 		return err
 	}
-	if err = file.Close(); err != nil {
+	if err := file.Close(); err != nil {
 		closed = true
 		return err
 	}
 	closed = true
-	if err = os.Rename(file.Name(), filename); err != nil {
+	if err := os.Rename(file.Name(), filename); err != nil {
 		return err
 	}
 	removeTemp = false

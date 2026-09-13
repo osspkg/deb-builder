@@ -25,6 +25,15 @@ type Replacer interface {
 }
 
 func Build(build, ver string, archs []string, cb func(arch string, repl Replacer)) {
+	console.FatalIfErr(BuildWithError(build, ver, archs, func(arch string, repl Replacer) error {
+		cb(arch, repl)
+		return nil
+	}), "build")
+}
+
+// BuildWithError runs the optional resource build command and then invokes cb
+// for every requested architecture without terminating the process on error.
+func BuildWithError(build, ver string, archs []string, cb func(arch string, repl Replacer) error) error {
 	for _, arch := range archs {
 
 		replacer := strings.NewReplacer(
@@ -36,11 +45,16 @@ func Build(build, ver string, archs []string, cb func(arch string, repl Replacer
 		if len(build) > 0 {
 			out, err := execCommand(replacer.Replace(build), true)
 			console.Warnf(out)
-			console.FatalIfErr(err, "Failed to build resources for %s", arch)
+			if err != nil {
+				return fmt.Errorf("failed to build resources for %s: %w", arch, err)
+			}
 		}
 
-		cb(arch, replacer)
+		if err := cb(arch, replacer); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 //nolint:unparam

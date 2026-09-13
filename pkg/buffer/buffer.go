@@ -7,8 +7,6 @@ package buffer
 
 import (
 	"bytes"
-
-	"go.osspkg.com/console"
 )
 
 type Buffer struct {
@@ -24,8 +22,11 @@ func New(arch string) *Buffer {
 }
 
 func (v *Buffer) Write(b []byte) {
-	_, err := v.b.Write(b)
-	console.FatalIfErr(err, "write %s package", v.a)
+	_, _ = v.WriteError(b)
+}
+
+func (v *Buffer) WriteError(b []byte) (int, error) {
+	return v.b.Write(b)
 }
 
 func (v *Buffer) Bytes() []byte {
