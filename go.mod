@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/stretchr/testify v1.11.1
-	go.osspkg.com/archives v1.1.0
+	go.osspkg.com/archives v1.2.0
 	go.osspkg.com/console v0.3.3
 	go.osspkg.com/encrypt v0.5.3
 	go.osspkg.com/ioutils v0.7.4

@@ -4,8 +4,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-go.osspkg.com/archives v1.1.0 h1:oXW46spG1Qh2Tofcokl24hY8Ggsf019jQjLhRcqtPcc=
-go.osspkg.com/archives v1.1.0/go.mod h1:Yj7p+GBlZzAHkFasjLoo7glfPJ14wO8f3a34ChCI3Bg=
+go.osspkg.com/archives v1.2.0 h1:akNK2pTs2HmWQxb/yep0SMNCIU07U3ILuMT6ipS705Y=
+go.osspkg.com/archives v1.2.0/go.mod h1:+gqbwAj1sMBIU2lr6S5HAQEOHcMmf2XGziEDQGGY8NI=
 go.osspkg.com/casecheck v0.3.0 h1:x15blEszElbrHrEH5H02JIIhGIg/lGZzIt1kQlD3pwM=
 go.osspkg.com/casecheck v0.3.0/go.mod h1:TRFXDMFJEOtnlp3ET2Hix3osbxwPWhvaiT/HfD3+gBA=
 go.osspkg.com/console v0.3.3 h1:UB/pPoPsgWbyNFix8pEMQHbsXdMv/UK/dgsbRknCH2A=
